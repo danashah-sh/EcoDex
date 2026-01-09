@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>EcoDex</title>
+    
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        :root { 
+            --primary: #2ecc71; 
+            --dark-primary: #27ae60;
+            --accent: #3498db; 
+            --danger: #e74c3c; /* Rød for sletting */
+            --bg: #f4f7f6; 
+            --dark-bg: #2c3e50; 
+            --item-bg: #34495e; 
+            --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
+        body { margin: 0; background: var(--bg); font-family: var(--font); overflow: hidden; height: 100vh; height: 100dvh; }
+
+        /* --- START SKJERM --- */
+        #startScreen {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: white; z-index: 99999;
+            display: flex; flex-direction: column; justify-content: center; align-items: center;
+            text-align: center; padding: 20px;
+        }
+        .start-btn {
+            background: var(--primary); color: white; padding: 20px 60px;
+            border-radius: 50px; border: none; font-size: 20px; font-weight: 800;
+            margin-top: 30px; box-shadow: 0 10px 30px rgba(46, 204, 113, 0.4);
+            cursor: pointer; animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
+
+        /* --- KART & HUD --- */
+        #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; }
+        
+        .top-hud {
+            position: absolute; top: 0; left: 0; right: 0; 
+            padding: 15px 20px; padding-top: max(15px, env(safe-area-inset-top));
+            z-index: 1000; display: flex; flex-direction: column; align-items: center;
+            background: linear-gradient(to bottom, rgba(255,255,255,0.9), transparent); pointer-events: none;
+        }
+        .hud-row { display: flex; justify-content: space-between; width: 100%; align-items: center; }
+        .logo { font-size: 22px; font-weight: 900; color: var(--primary); text-shadow: 2px 2px 0px white; }
+        .score-badge {
+            background: white; border: 2px solid var(--primary); border-radius: 20px;
+            padding: 6px 16px; font-weight: bold; font-size: 16px; color: #333;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1); pointer-events: auto;
+        }
+        #debugStatus {
+            font-size: 11px; color: #555; background: rgba(255,255,255,0.9);
+            padding: 4px 10px; border-radius: 10px; margin-top: 5px; font-weight: bold;
+        }
+
+        /* --- ROBOT --- */
+        .robot-wrapper {
+            position: fixed; bottom: 140px; right: 20px; z-index: 2000;
+            display: flex; flex-direction: column; align-items: flex-end; pointer-events: none;
+        }
+        .robot-bubble {
+            background: white; padding: 12px; border-radius: 15px 15px 0 15px;
+            font-size: 13px; margin-bottom: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            max-width: 180px; text-align: right; display: none; font-weight: bold;
+        }
+        .robot-body {
+            font-size: 60px; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3));
+            animation: bounce 3s infinite ease-in-out; cursor: pointer; pointer-events: auto;
+        }
+        @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-15px);} }
+
+        /* --- KAMERA --- */
+        #cameraPage { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: black; z-index: 6000; display: none; }
+        #cameraPage.active { display: block; }
+        #videoFeed { width: 100%; height: 100%; object-fit: cover; }
+        #photoCanvas { display: none; }
+        #capturedPhoto { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; display: none; z-index: 6001; }
+        .camera-ui {
+            position: absolute; bottom: 50px; width: 100%; display: flex; justify-content: center; z-index: 6005;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+        .snap-btn { width: 80px; height: 80px; background: white; border-radius: 50%; border: 6px solid #ddd; cursor: pointer; }
+        .save-btn { background: var(--primary); color: white; padding: 15px 40px; border-radius: 30px; border: none; font-size: 18px; font-weight: bold; display: none; cursor: pointer; }
+        .close-cam { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; top: max(20px, env(safe-area-inset-top)); z-index: 7000; cursor: pointer; }
+
+        /* --- BILDE VISNING & REDIGERING (Lightbox) --- */
+        #imageModal {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95);
+            z-index: 8000; display: none; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px;
+        }
+        #imageModal.active { display: flex; }
+        #fullImage { max-width: 100%; max-height: 55vh; border-radius: 10px; box-shadow: 0 0 20px rgba(255,255,255,0.2); margin-bottom: 15px; }
+        .modal-close { position: absolute; top: 30px; right: 30px; color: white; font-size: 40px; cursor: pointer; z-index: 8001; }
+        
+        #imgScoreDisplay { color: var(--primary); font-weight: 800; margin-bottom: 10px; font-size: 18px; }
+        
+        /* Input og knapper i lightbox */
+        .modal-controls { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
+        .name-row { display: flex; gap: 10px; }
+        #imgNameInput { flex: 1; padding: 12px; border-radius: 8px; border: none; font-size: 16px; outline: none; }
+        .save-name-btn { background: var(--accent); color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; font-size: 14px; }
+        
+        .delete-btn {
+            background: var(--danger); color: white; border: none; padding: 12px; 
+            border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px;
+        }
+        .cost-info { color: #ccc; font-size: 12px; text-align: center; margin-bottom: 5px; }
+
+        /* --- SIDER --- */
+        .page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f8f9fa; z-index: 4000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 100px; }
+        .page.active { display: flex; }
+
+        /* SHOP */
+        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
+        .shop-item { background: white; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .buy-btn { background: var(--primary); color: white; border: none; width: 100%; padding: 10px; border-radius: 10px; margin-top: 10px; font-weight: bold; cursor: pointer; }
+
+        /* PROFIL */
+        .profile-header {
+            background: linear-gradient(135deg, #2ecc71, #27ae60);
+            padding: 40px 20px 30px; border-radius: 0 0 30px 30px;
+            color: white; text-align: center; box-shadow: 0 5px 15px rgba(46, 204, 113, 0.3);
+        }
+        .profile-avatar { font-size: 60px; background: rgba(255,255,255,0.2); width: 100px; height: 100px; border-radius: 50%; margin: 0 auto 15px; display: flex; justify-content: center; align-items: center; border: 4px solid white; }
+        .profile-name { font-size: 24px; font-weight: 800; margin-bottom: 5px; }
+        .profile-level { background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 20px; font-size: 14px; font-weight: bold; display: inline-block; }
+        
+        .profile-stats {
+            display: flex; justify-content: space-around; margin: 20px;
+            background: white; padding: 15px; border-radius: 15px; box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        }
+        .stat-box { text-align: center; }
+        .stat-val { font-size: 20px; font-weight: 900; color: var(--dark-bg); }
+        .stat-label { font-size: 12px; color: #7f8c8d; text-transform: uppercase; }
+
+        .gallery-title { margin: 20px; font-size: 18px; color: var(--dark-bg); font-weight: bold; }
+        .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; padding: 0 20px; }
+        
+        .gallery-item { position: relative; cursor: pointer;border-radius: 10px; overflow: hidden; box-shadow: 0 3px 8px rgba(0,0,0,0.1); }
+        .gallery-img { width: 100%; aspect-ratio: 1; object-fit: cover; }
+        .gallery-overlay { 
+            position: absolute; bottom: 0; left: 0; right: 0; 
+            background: linear-gradient(to top, rgba(0,0,0,0.8), transparent); color: white; 
+            font-size: 12px; padding: 8px 5px 5px 5px; 
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .gallery-score { color: var(--primary); font-weight: bold; font-size: 11px; }
+
+        /* LEADERBOARD */
+        #leaderboardPage { background-color: var(--dark-bg); color: white; padding: 20px; padding-bottom: 100px;}
+        .lb-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; margin-top: 40px; }
+        .lb-toggle { display: flex; background: #1a252f; border-radius: 20px; padding: 2px; }
+        .lb-tab { padding: 8px 20px; border-radius: 18px; font-size: 13px; cursor: pointer; color: #95a5a6; transition: 0.2s; }
+        .lb-tab.active { background: var(--primary); color: white; font-weight: bold; }
+        
+        .lb-list { display: flex; flex-direction: column; gap: 8px; }
+        .lb-item { display: flex; align-items: center; background: var(--item-bg); padding: 12px 15px; border-radius: 12px; box-shadow: 0 4px 5px rgba(0,0,0,0.1); }
+        .lb-rank { width: 30px; font-weight: bold; color: #bdc3c7; font-size: 16px; }
+        .lb-avatar { width: 40px; height: 40px; border-radius: 50%; background: #7f8c8d; margin-right: 15px; display: flex; justify-content: center; align-items: center; font-size: 22px; }
+        .lb-info { flex-grow: 1; }
+        .lb-name { font-weight: bold; font-size: 15px; }
+        .lb-xp { color: #bdc3c7; font-size: 12px; margin-top: 2px; }
+        .lb-score { font-weight: bold; color: var(--primary); font-size: 16px; }
+        .lb-item.me { border: 2px solid var(--primary); background: #2c3e50; }
+
+        .me-dot { width: 20px; height: 20px; background: #3498db; border: 4px solid white; border-radius: 50%; box-shadow: 0 0 15px rgba(52, 152, 219, 0.6); }
+
+        /* MENY */
+        .bottom-nav {
+            position: fixed; bottom: 25px; bottom: max(25px, env(safe-area-inset-bottom));
+            left: 50%; transform: translateX(-50%); width: 92%; max-width: 450px; height: 70px;
+            background: white; border-radius: 25px; display: flex; justify-content: space-between; align-items: center;
+            z-index: 5000; box-shadow: 0 10px 30px rgba(0,0,0,0.15); padding: 0 15px;
+        }
+        .nav-group { display: flex; gap: 15px; width: 40%; justify-content: space-around; }
+        .nav-item { background: none; border: none; display: flex; flex-direction: column; align-items: center; color: #bdc3c7; width: 50px; cursor: pointer; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { width: 24px; height: 24px; fill: currentColor; }
+        .nav-text { font-size: 10px; font-weight: 700; margin-top: 4px; text-transform: uppercase; }
+        .cam-outer { position: absolute; left: 50%; top: -35px; transform: translateX(-50%); z-index: 5001; }
+        .cam-btn-round {
+            width: 75px; height: 75px; border-radius: 50%; background: var(--primary); border: 5px solid white;
+            display: flex; justify-content: center; align-items: center; box-shadow: 0 -5px 20px rgba(0,0,0,0.1); cursor: pointer;
+        }
+        .cam-btn-round svg { fill: white; width: 32px; height: 32px; }
+    </style>
+</head>
+<body>
+
+    <div id="startScreen">
+        <h1 style="color:#2c3e50; font-size: 40px; margin-bottom: 5px;">EcoDex</h1>
+        <p style="color:#7f8c8d;">Utforsk verden!</p>
+        <button class="start-btn" onclick="initGame()">START 📍</button>
+        <p style="font-size: 13px; margin-top: 30px; color: #999; max-width: 80%;">
+            Trykk "Tillat" for GPS.
+        </p>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="top-hud">
+        <div class="hud-row">
+            <div class="logo">ECODEX</div>
+            <div class="score-badge">⭐ <span id="scoreVal">0</span></div>
+        </div>
+        <div id="debugStatus">Klar til start...</div>
+    </div>
+
+    <div class="robot-wrapper" onclick="robotTalk()">
+        <div class="robot-bubble" id="robotMsg">Hei! Jeg er Tod Erik.</div>
+        <div class="robot-body">🤖</div>
+    </div>
+
+    <div id="cameraPage">
+        <div class="close-cam" onclick="closeCamera()">✕</div>
+        <video id="videoFeed" autoplay playsinline muted></video>
+        <canvas id="photoCanvas"></canvas>
+        <img id="capturedPhoto" src="">
+        <div class="camera-ui">
+            <button class="snap-btn" id="snapBtn" onclick="takePhoto()"></button>
+            <button class="save-btn" id="saveBtn" onclick="savePhotoAndGetPoints()">LAGRE</button>
+        </div>
+    </div>
+
+    <div id="imageModal">
+        <div class="modal-close" onclick="closeImageModal()">✕</div>
+        <img id="fullImage" src="" alt="Stort bilde">
+        <div id="imgScoreDisplay">Verdi: 0 poeng</div>
+        
+        <div class="modal-controls">
+            <div class="cost-info">Endre navn koster 50 poeng</div>
+            <div class="name-row">
+                <input type="text" id="imgNameInput" placeholder="Gi navn...">
+                <button class="save-name-btn" onclick="saveImageName()">Lagre (50p)</button>
+            </div>
+            <button class="delete-btn" onclick="deleteCurrentPhoto()">Slett Bilde 🗑️</button>
+        </div>
+    </div>
+
+    <div id="shopPage" class="page">
+        <h2 style="text-align: center; color: #2c3e50; padding: 20px;">Butikk</h2>
+        <div id="shopList" class="shop-grid"></div>
+    </div>
+    
+    <div id="profilePage" class="page" style="padding: 0;">
+        <div class="profile-header">
+            <div class="profile-avatar">👤</div>
+            <div class="profile-name">Meg (Deg)</div>
+            <div class="profile-level">Nivå <span id="levelVal">1</span></div>
+        </div>
+        <div class="profile-stats">
+            <div class="stat-box">
+                <div class="stat-val" id="totalScoreVal">0</div>
+                <div class="stat-label">Poeng</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-val" id="photoCountVal">0</div>
+                <div class="stat-label">Bilder</div>
+            </div>
+        </div>
+        <div class="gallery-title">Mitt Galleri</div>
+        <div id="gallery" class="gallery-grid"></div>
+        <p id="emptyMsg" style="text-align: center; color: #999; margin-top: 20px;">Ingen bilder tatt enda.</p>
+    </div>
+    
+    <div id="leaderboardPage" class="page">
+        <div class="lb-header">
+            <h2 style="color:white; margin:0;">Ledertavle</h2>
+            <div class="lb-toggle">
+                <div class="lb-tab active" id="tabFriends" onclick="switchLeaderboard('friends')">Venner</div>
+                <div class="lb-tab" id="tabGlobal" onclick="switchLeaderboard('global')">Global</div>
+            </div>
+        </div>
+        <div class="lb-list" id="lbList"></div>
+    </div>
+
+    <div class="bottom-nav">
+        <div class="nav-group">
+            <button class="nav-item active" id="btnMap" onclick="showPage('map')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M20.5 3l-6 2-6-2-6 2v15l6 2 6-2 6 2 2.5-0.8V4.2L20.5 3zM14 17.5l-6 2-6-2V5.5l6 2 6-2v12z"/></svg><span class="nav-text">KART</span></button>
+            <button class="nav-item" id="btnShop" onclick="showPage('shop')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg><span class="nav-text">BUTIKK</span></button>
+        </div>
+        <div class="cam-outer"><div class="cam-btn-round" onclick="openCamera()"><svg viewBox="0 0 24 24"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm6 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5z"/></svg></div></div>
+        <div class="nav-group">
+            <button class="nav-item" id="btnProfile" onclick="showPage('profile')"><svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg><span class="nav-text">PROFIL</span></button>
+            <button class="nav-item" id="btnLeaderboard" onclick="showPage('leaderboard')">
+                <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14h-2v-4h2v4zm-4 0H8v-8h2v8zm8 0h-2v-6h2v6z"/></svg>
+                <span class="nav-text">TOPP</span>
+            </button>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        let map, playerMarker;
+        let score = 0;
+        let inventory = [];
+        let photos = []; 
+        let manualLocationMode = false;
+        let currentLat = 0, currentLng = 0;
+        let currentLbTab = 'friends';
+        let currentViewingPhotoId = null;
+
+        const shopItems = [
+            { id: 1, name: "Kompass", cost: 50, icon: "🧭" },
+            { id: 2, name: "Lys", cost: 100, icon: "🔦" },
+            { id: 3, name: "Hatt", cost: 150, icon: "🧢" },
+            { id: 4, name: "Sekk", cost: 300, icon: "🎒" },
+            { id: 5, name: "Telt", cost: 400, icon: "⛺" },
+            { id: 6, name: "Drone", cost: 500, icon: "🚁" },
+            { id: 7, name: "Kano", cost: 750, icon: "🛶" },
+            { id: 8, name: "Pro Kamera", cost: 1000, icon: "📷" }
+        ];
+
+        const mockFriends = [
+            { name: "NaturVandrer", xp: 4520, avatar: "🧔" },
+            { name: "Skogsmusa", xp: 3460, avatar: "🐭" },
+            { name: "Fjellreven", xp: 2800, avatar: "🦊" }
+        ];
+        const mockGlobal = [
+            { name: "EcoKing_USA", xp: 99520, avatar: "🌎" },
+            { name: "GreenQueen", xp: 87400, avatar: "👑" }
+        ];
+
+        function initGame() {
+            document.getElementById('startScreen').style.display = 'none';
+            loadData();
+            setupMap();
+            updateStatus("Søker...");
+            map.locate({ setView: true, maxZoom: 18, timeout: 30000, enableHighAccuracy: true });
+            startContinuousGPS();
+            renderShop();
+        }
+
+        function startContinuousGPS() {
+            if (navigator.geolocation) {
+                navigator.geolocation.watchPosition(
+                    (pos) => {
+                        currentLat = pos.coords.latitude;
+                        currentLng = pos.coords.longitude;
+                        playerMarker.setLatLng([currentLat, currentLng]);
+                        updateStatus("📍 Funnet");
+                    },
+                    (err) => console.warn("GPS Error", err),
+                    { enableHighAccuracy: true }
+                );
+            }
+        }
+
+        function updateStatus(msg) { document.getElementById('debugStatus').innerText = msg; }
+
+        function setupMap() {
+            map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '', maxZoom: 19 }).addTo(map);
+            const icon = L.divIcon({ className: 'p-icon', html: '<div class="me-dot"></div>', iconSize: [20, 20] });
+            playerMarker = L.marker([0, 0], { icon: icon }).addTo(map);
+
+            map.on('locationfound', (e) => {
+                currentLat = e.latlng.lat; currentLng = e.latlng.lng;
+                updateStatus("📍 GPS Funnet!");
+                playerMarker.setLatLng(e.latlng);
+                if (Math.random() > 0.8) spawnCreature(e.latlng.lat + 0.0005, e.latlng.lng + 0.0005);
+            });
+            
+            map.on('locationerror', (e) => {
+                manualLocationMode = true;
+                updateStatus("GPS Feil. Klikk på kartet.");
+                alert("GPS feilet. Klikk på kartet for å starte.");
+            });
+
+            map.on('click', function (e) {
+                if (manualLocationMode) {
+                    currentLat = e.latlng.lat; currentLng = e.latlng.lng;
+                    playerMarker.setLatLng(e.latlng); map.setView(e.latlng, 17);
+                    updateStatus("Manuell posisjon");
+                    spawnCreature(e.latlng.lat + 0.0003, e.latlng.lng + 0.0003);
+                    manualLocationMode = false;
+                }
+            });
+        }
+
+        function spawnCreature(lat, lng) {
+            const icon = L.divIcon({ html: '<div style="font-size:35px">🦉</div>', className: 'c', iconSize: [35, 35] });
+            L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup("En ugle!");
+            robotTalk("Jeg ser et dyr!");
+        }
+
+        // --- KAMERA ---
+        function openCamera() {
+            document.getElementById('cameraPage').classList.add('active');
+            document.getElementById('capturedPhoto').style.display = 'none';
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('saveBtn').innerText = "LAGRE";
+            document.getElementById('snapBtn').style.display = 'block';
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => { document.getElementById('videoFeed').srcObject = stream; })
+                .catch(err => alert("Kamera Feil: " + err));
+        }
+        function closeCamera() {
+            const vid = document.getElementById('videoFeed');
+            if (vid.srcObject) vid.srcObject.getTracks().forEach(t => t.stop());
+            document.getElementById('cameraPage').classList.remove('active');
+        }
+        function takePhoto() {
+            const vid = document.getElementById('videoFeed');
+            const can = document.getElementById('photoCanvas');
+            const img = document.getElementById('capturedPhoto');
+            can.width = vid.videoWidth; can.height = vid.videoHeight;
+            can.getContext('2d').drawImage(vid, 0, 0);
+            img.src = can.toDataURL('image/png'); img.style.display = 'block';
+            document.getElementById('snapBtn').style.display = 'none';
+            
+            const potentialPoints = Math.floor(Math.random() * 201) + 50;
+            const saveBtn = document.getElementById('saveBtn');
+            saveBtn.style.display = 'block';
+            saveBtn.innerText = `LAGRE (+${potentialPoints}p)`;
+            saveBtn.dataset.points = potentialPoints;
+        }
+        function savePhotoAndGetPoints() {
+            const saveBtn = document.getElementById('saveBtn');
+            const pointsForThisPic = parseInt(saveBtn.dataset.points) || 100;
+            
+            score += pointsForThisPic;
+            const src = document.getElementById('capturedPhoto').src;
+            
+            const newPhoto = {
+                id: Date.now(),
+                src: src,
+                name: "Uten navn",
+                score: pointsForThisPic
+            };
+            photos.push(newPhoto);
+            
+            saveData(); 
+            updateScoreUI(); 
+            updateProfileUI();
+            renderGallery();
+            
+            robotTalk(`Bilde lagret! +${pointsForThisPic}p`);
+            closeCamera();
+        }
+
+        // --- BILDE MODAL & SLETTING ---
+        function openImageModal(id) {
+            const photo = photos.find(p => p.id === id);
+            if (!photo) return;
+            currentViewingPhotoId = id;
+            document.getElementById('fullImage').src = photo.src;
+            document.getElementById('imgScoreDisplay').innerText = `Verdi: ${photo.score} poeng`;
+            document.getElementById('imgNameInput').value = photo.name === "Uten navn" ? "" : photo.name;
+            document.getElementById('imageModal').classList.add('active');
+        }
+        function closeImageModal() {
+            document.getElementById('imageModal').classList.remove('active');
+            currentViewingPhotoId = null;
+        }
+        function saveImageName() {
+            const cost = 50;
+            const name = document.getElementById('imgNameInput').value;
+            const photo = photos.find(p => p.id === currentViewingPhotoId);
+            
+            if (photo && name) {
+                if (score >= cost) {
+                    score -= cost;
+                    photo.name = name;
+                    saveData();
+                    updateScoreUI();
+                    renderGallery();
+                    closeImageModal();
+                    robotTalk("Navn lagret! (-50p)");
+                } else {
+                    alert("Du trenger 50 poeng for å endre navn!");
+                }
+            }
+        }
+        function deleteCurrentPhoto() {
+            if(!currentViewingPhotoId) return;
+            if(confirm("Er du sikker på at du vil slette dette bildet?")) {
+                photos = photos.filter(p => p.id !== currentViewingPhotoId);
+                saveData();
+                updateProfileUI();
+                renderGallery();
+                closeImageModal();
+                robotTalk("Bilde slettet.");
+            }
+        }
+
+        // --- GALLERI LOGIKK ---
+        function renderGallery() {
+            const gallery = document.getElementById('gallery');
+            gallery.innerHTML = "";
+            if (photos.length === 0) {
+                document.getElementById('emptyMsg').style.display = 'block';
+                return;
+            }
+            document.getElementById('emptyMsg').style.display = 'none';
+            
+            [...photos].reverse().forEach(p => {
+                const div = document.createElement('div');
+                div.className = 'gallery-item';
+                div.onclick = function() { openImageModal(p.id); };
+                div.innerHTML = `
+                    <img src="${p.src}" class="gallery-img">
+                    <div class="gallery-overlay">
+                        ${p.name} <span class="gallery-score">(${p.score}p)</span>
+                    </div>
+                `;
+                gallery.appendChild(div);
+            });
+        }
+
+        // --- LEADERBOARD LOGIKK ---
+        function switchLeaderboard(type) {
+            currentLbTab = type;
+            document.getElementById('tabFriends').classList.toggle('active', type === 'friends');
+            document.getElementById('tabGlobal').classList.toggle('active', type === 'global');
+            renderLeaderboard();
+        }
+
+        function renderLeaderboard() {
+            const list = document.getElementById('lbList');
+            list.innerHTML = "";
+            let sourceData = (currentLbTab === 'friends') ? [...mockFriends] : [...mockGlobal];
+            sourceData.push({ name: "Meg (Deg)", xp: score, avatar: "👤", isMe: true });
+            sourceData.sort((a, b) => b.xp - a.xp);
+            
+            sourceData.forEach((p, index) => {
+                const item = document.createElement('div');
+                item.className = `lb-item ${p.isMe ? 'me' : ''}`;
+                item.innerHTML = `
+                    <div class="lb-rank">${index + 1}</div>
+                    <div class="lb-avatar">${p.avatar}</div>
+                    <div class="lb-info">
+                        <div class="lb-name">${p.name}</div>
+                        <div class="lb-xp">Level ${Math.floor(p.xp/1000) + 1}</div>
+                    </div>
+                    <div class="lb-score">${p.xp} XP</div>
+                `;
+                list.appendChild(item);
+            });
+        }
+
+        // --- DATA & UI ---
+        function loadData() {
+            const s = localStorage.getItem('ecoDexScore');
+            const i = localStorage.getItem('ecoDexInv');
+            const p = localStorage.getItem('ecoDexPhotoObjects'); 
+            if (s) score = parseInt(s);
+            if (i) inventory = JSON.parse(i);
+            if (p) photos = JSON.parse(p);
+            
+            updateScoreUI();
+            updateProfileUI();
+            renderGallery();
+        }
+        function saveData() { 
+            localStorage.setItem('ecoDexScore', score); 
+            localStorage.setItem('ecoDexInv', JSON.stringify(inventory));
+            localStorage.setItem('ecoDexPhotoObjects', JSON.stringify(photos));
+        }
+        function updateScoreUI() { document.getElementById('scoreVal').innerText = score; }
+        function updateProfileUI() {
+            document.getElementById('totalScoreVal').innerText = score;
+            document.getElementById('photoCountVal').innerText = photos.length;
+            document.getElementById('levelVal').innerText = Math.floor(score / 1000) + 1;
+        }
+        
+        function renderShop() {
+            const g = document.getElementById('shopList'); g.innerHTML = "";
+            shopItems.forEach(i => {
+                const owned = inventory.includes(i.id);
+                g.innerHTML += `<div class="shop-item"><div style="font-size:35px">${i.icon}</div><b>${i.name}</b><br><span style="color:#2ecc71">${i.cost} p</span><br><button class="buy-btn ${owned?'owned':''}" onclick="buyItem(${i.id},${i.cost})">${owned?'EID':'KJØP'}</button></div>`;
+            });
+        }
+        function buyItem(id, cost) {
+            if(inventory.includes(id)) return;
+            if(score >= cost) { score -= cost; inventory.push(id); saveData(); updateScoreUI(); renderShop(); robotTalk("Kjøpt!"); } 
+            else robotTalk("Mangler poeng!");
+        }
+        function robotTalk(msg) {
+            const b = document.getElementById('robotMsg'); b.innerText = msg; b.style.display = 'block';
+            setTimeout(() => b.style.display = 'none', 4000);
+        }
+        
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            
+            if (id === 'map') document.getElementById('btnMap').classList.add('active');
+            else if (id === 'shop') document.getElementById('btnShop').classList.add('active');
+            else if (id === 'profile') {
+                document.getElementById('btnProfile').classList.add('active');
+                updateProfileUI();
+            }
+            else if (id === 'leaderboard') {
+                document.getElementById('btnLeaderboard').classList.add('active');
+                renderLeaderboard();
+            }
+            
+            if (id !== 'map') document.getElementById(id + 'Page').classList.add('active');
+        }
+    </script>
+</body>
+</html>
