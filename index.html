@@ -6,69 +6,77 @@
     <title>EcoDex</title>
     
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/ml5@latest/dist/ml5.min.js"></script>
+
     <style>
-        /* --- DESIGN TILPASSET DINE BILDER --- */
         :root { 
-            --primary: #2ecc71;      /* Den grønne fargen fra bildet */
-            --primary-dark: #27ae60;
+            --primary: #27ae60; 
             --bg-color: #f0f2f5;
             --text-color: #333;
             --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            --chat-bubble-me: #2ecc71;
+            --chat-bubble-them: #e5e5ea;
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
         body { margin: 0; background: var(--bg-color); font-family: var(--font); overflow: hidden; height: 100vh; height: 100dvh; }
 
-        /* START SKJERM */
-        #startScreen {
+        /* --- LOGIN SKJERM --- */
+        #loginScreen {
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            background: white; z-index: 99999;
+            background: radial-gradient(circle, #2ecc71, #27ae60);
+            z-index: 100000;
             display: flex; flex-direction: column; justify-content: center; align-items: center;
-            text-align: center; padding: 20px;
+            padding: 30px; color: white; transition: opacity 0.5s;
         }
-        .start-btn {
-            background: var(--primary); color: white; padding: 20px 60px;
-            border-radius: 50px; border: none; font-size: 20px; font-weight: 800;
-            margin-top: 30px; box-shadow: 0 10px 25px rgba(46, 204, 113, 0.4);
-            cursor: pointer; animation: pulse 1.5s infinite;
+        .login-box {
+            background: white; padding: 30px; border-radius: 20px;
+            width: 100%; max-width: 350px; text-align: center;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
         }
-        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.05);} 100% {transform: scale(1);} }
+        .login-input {
+            width: 100%; padding: 15px; margin: 10px 0;
+            border: 2px solid #eee; border-radius: 10px;
+            font-size: 16px; outline: none; text-align: center; background: #f9f9f9; color: black;
+        }
+        .login-input:focus { border-color: var(--primary); background: white; }
+        .login-btn {
+            background: var(--primary); color: white; width: 100%; padding: 15px;
+            border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 15px;
+        }
+        #loginError { color: #e74c3c; font-size: 14px; margin-top: 15px; font-weight: bold; min-height: 20px; }
 
-        /* KART */
+        /* --- LOADING --- */
+        #aiLoading {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(255,255,255,0.95); z-index: 9000;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+        }
+        .spinner {
+            width: 50px; height: 50px; border: 5px solid #ccc; 
+            border-top-color: var(--primary); border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin { 100% {transform: rotate(360deg);} }
+
+        /* KART & HUD */
         #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; }
-        
-        /* HUD (Kart overlay) */
-        .top-hud {
-            position: absolute; top: 0; left: 0; right: 0; 
-            padding: 15px 20px; padding-top: max(15px, env(safe-area-inset-top));
-            z-index: 1000; display: flex; flex-direction: column; align-items: center;
-            pointer-events: none;
-        }
-        .hud-bg { 
-            background: rgba(255,255,255,0.9); padding: 8px 20px; border-radius: 30px; 
-            display: flex; gap: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1);
-        }
-        .logo { font-weight: 900; color: var(--primary); }
+        .player-map-icon { text-align: center; line-height: 1; font-size: 40px; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.4)); transition: all 0.3s ease; }
+        .player-map-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
+        .marker-anim { animation: bounceMarker 2s infinite; }
+        @keyframes bounceMarker { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-5px);} }
+
+        .top-hud { position: absolute; top: 0; left: 0; right: 0; padding: 15px 20px; padding-top: max(15px, env(safe-area-inset-top)); z-index: 1000; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
+        .hud-bg { background: rgba(255,255,255,0.95); padding: 8px 20px; border-radius: 30px; display: flex; gap: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
         .score-badge { font-weight: bold; color: #333; }
-        #debugStatus {
-            font-size: 10px; color: #555; background: rgba(255,255,255,0.8);
-            padding: 2px 8px; border-radius: 10px; margin-top: 5px;
-        }
+        #debugStatus { font-size: 10px; color: #555; background: rgba(255,255,255,0.8); padding: 2px 8px; border-radius: 10px; margin-top: 5px; }
 
-        /* KNAPP MANUELL POSISJON */
-        .manual-pos-btn {
-            position: absolute; top: 100px; right: 10px; z-index: 2000;
-            background: white; padding: 12px; border-radius: 50%;
-            border: none; font-size: 24px; box-shadow: 0 4px 10px rgba(0,0,0,0.2); cursor: pointer;
-        }
-        .manual-pos-btn:disabled { opacity: 0.5; filter: grayscale(100%); }
-
-        /* ROBOT */
-        .robot-wrapper { position: fixed; bottom: 140px; right: 20px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
-        .robot-bubble { background: white; padding: 12px; border-radius: 15px 15px 0 15px; font-size: 13px; margin-bottom: 5px; box-shadow: 0 5px 15px rgba(0,0,0,0.1); max-width: 180px; text-align: right; display: none; font-weight: bold; }
-        .robot-body { font-size: 60px; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3)); animation: bounce 3s infinite ease-in-out; cursor: pointer; pointer-events: auto; }
-        @keyframes bounce { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-15px);} }
+        /* ROBOT (TOD ERIK) */
+        .robot-wrapper { position: fixed; bottom: 120px; right: 20px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
+        .robot-bubble { background: white; padding: 10px 15px; border-radius: 15px 15px 0 15px; font-size: 13px; margin-bottom: 5px; box-shadow: 0 3px 10px rgba(0,0,0,0.1); max-width: 180px; text-align: right; display: none; font-weight: bold; color: #333; }
+        .robot-body { width: 60px; filter: drop-shadow(0 5px 5px rgba(0,0,0,0.3)); animation: float 3s infinite ease-in-out; cursor: pointer; pointer-events: auto; }
+        @keyframes float { 0%, 100% {transform: translateY(0);} 50% {transform: translateY(-8px);} }
 
         /* KAMERA */
         #cameraPage { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: black; z-index: 6000; display: none; }
@@ -76,170 +84,120 @@
         #videoFeed { width: 100%; height: 100%; object-fit: cover; }
         #photoCanvas { display: none; }
         #capturedPhoto { position: absolute; top:0; left:0; width:100%; height:100%; object-fit: cover; display: none; z-index: 6001; }
-        .camera-ui { position: absolute; bottom: 50px; width: 100%; display: flex; justify-content: center; z-index: 6005; padding-bottom: env(safe-area-inset-bottom); }
+        .camera-ui { position: absolute; bottom: 50px; width: 100%; display: flex; flex-direction: column; align-items: center; gap:20px; z-index: 6005; padding-bottom: env(safe-area-inset-bottom); }
         .snap-btn { width: 80px; height: 80px; background: white; border-radius: 50%; border: 6px solid #ddd; cursor: pointer; }
-        .save-btn { background: var(--primary); color: white; padding: 15px 40px; border-radius: 30px; border: none; font-size: 18px; font-weight: bold; display: none; cursor: pointer; }
-        .close-cam { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; top: max(20px, env(safe-area-inset-top)); z-index: 7000; cursor: pointer; }
+        .save-btn { background: var(--primary); color: white; padding: 15px 40px; border-radius: 30px; border: none; font-size: 18px; font-weight: bold; display: none; cursor: pointer; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+        .close-cam { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; top: max(20px, env(safe-area-inset-top)); z-index: 7000; cursor: pointer; text-shadow: 0 0 5px black; }
+        #aiResultText { color: white; font-weight: bold; background: rgba(0,0,0,0.6); padding: 10px 20px; border-radius: 20px; display: none; text-align: center; max-width: 80%; }
 
-        /* LIGHTBOX */
-        #imageModal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.95); z-index: 8000; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
-        #imageModal.active { display: flex; }
-        #fullImage { max-width: 100%; max-height: 50vh; border-radius: 10px; margin-bottom: 15px; }
-        .modal-close { position: absolute; top: 30px; right: 30px; color: white; font-size: 40px; cursor: pointer; z-index: 8001; }
-        .modal-controls { width: 100%; max-width: 300px; display: flex; flex-direction: column; gap: 10px; }
-        .name-row { display: flex; gap: 10px; }
-        #imgNameInput { flex: 1; padding: 12px; border-radius: 8px; border: none; font-size: 16px; outline: none; }
-        .save-name-btn { background: #3498db; color: white; border: none; padding: 12px 20px; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        .delete-btn { background: #e74c3c; color: white; border: none; padding: 12px; border-radius: 8px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 5px; }
-        .cost-info { color: #ccc; font-size: 12px; text-align: center; margin-bottom: 5px; }
-        #imgScoreDisplay { color: var(--primary); font-weight: 800; margin-bottom: 10px; font-size: 18px; }
-
-        /* SIDER */
-        .page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f0f2f5; z-index: 4000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 100px; }
+        /* SIDER GENERELLT */
+        .page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f0f2f5; z-index: 4000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 110px; }
         .page.active { display: flex; }
+        .section-title { margin: 20px 20px 10px; font-size: 16px; color: #333; font-weight: 800; }
+        .logout-btn { background: #e74c3c; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; margin-top: 15px; cursor: pointer; }
 
-        /* --- PROFIL DESIGN (MATCHET MED BILDE 2/3) --- */
-        .profile-header {
-            background-color: var(--primary); /* Helgrønn bakgrunn */
-            padding: 40px 20px 20px;
-            color: white;
-            text-align: center;
-            display: flex; flex-direction: column; align-items: center;
-        }
-        
-        /* Avatar sirkel */
-        .profile-avatar { 
-            font-size: 50px; 
-            background: #2c3e50; 
-            color: white;
-            width: 90px; height: 90px; 
-            border-radius: 50%; 
-            display: flex; justify-content: center; align-items: center; 
-            border: 4px solid rgba(255,255,255,0.3); 
-            margin-bottom: 10px;
-        }
-        
-        .profile-name { font-size: 24px; font-weight: 700; cursor: pointer; }
-        .profile-name span { border-bottom: 1px dashed rgba(255,255,255,0.5); }
-        .profile-level { font-size: 14px; opacity: 0.9; margin-bottom: 20px; }
+        /* BUTIKK & GRID LAYOUT */
+        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 0 20px; }
+        .item-card { background: white; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); cursor: pointer; transition: 0.2s; position: relative; }
+        .item-card:active { transform: scale(0.95); }
+        .item-card.equipped { border: 3px solid var(--primary); background: #e8f8f5; }
+        .item-icon { font-size: 40px; margin-bottom: 5px; }
+        .item-name { font-size: 14px; font-weight: bold; color: #333; }
+        .item-cost { font-size: 12px; color: var(--primary); font-weight: bold; margin-top: 5px; }
 
-        /* Avatar Container (Den mørkegrønne stripen) */
-        .avatar-container {
-            background: rgba(0, 0, 0, 0.1); /* Transparent mørk stripe */
-            border-radius: 50px;
-            padding: 8px 15px;
-            display: flex; gap: 10px;
-            margin-top: 10px;
-            width: 90%; max-width: 400px;
-            justify-content: center;
-            overflow-x: auto; /* Scrolle hvis mange */
-        }
-        .avatar-option { 
-            font-size: 22px; cursor: pointer; 
-            width: 40px; height: 40px; 
-            border-radius: 50%; 
-            background: rgba(255,255,255,0.25); 
-            display: flex; justify-content: center; align-items: center;
-            transition: 0.2s;
-            flex-shrink: 0;
-        }
-        .avatar-option.selected { 
-            background: white; border: 2px solid #2c3e50; transform: scale(1.1); 
-        }
+        /* SOSIALT */
+        .tab-bar { display: flex; justify-content: space-around; background: white; padding: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .tab-btn { border: none; background: none; font-weight: bold; color: #999; font-size: 14px; padding: 10px; cursor: pointer; border-bottom: 3px solid transparent; }
+        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
 
-        /* Hvit statistikk-bar (Som bilde 2) */
-        .profile-stats {
-            background: white;
-            padding: 15px 0;
-            display: flex; justify-content: space-around;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
-        }
-        .stat-box { text-align: center; width: 50%; }
-        .stat-box:first-child { border-right: 1px solid #eee; }
-        .stat-val { font-size: 20px; font-weight: 800; color: #333; }
-        .stat-label { font-size: 10px; color: #7f8c8d; text-transform: uppercase; font-weight: bold; }
+        .search-row { display: flex; gap: 10px; padding: 0 20px 20px; }
+        .search-input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; outline: none; }
+        .search-btn { background: var(--primary); color: white; border: none; border-radius: 10px; padding: 0 20px; font-weight: bold; cursor: pointer; }
 
-        .section-title { margin: 0 20px 15px; font-size: 16px; color: #333; font-weight: 800; }
-
-        /* Galleri Grid */
-        .gallery-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 0 20px; }
-        .gallery-item { position: relative; cursor: pointer; border-radius: 12px; overflow: hidden; background: #ddd; aspect-ratio: 1; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .gallery-img { width: 100%; height: 100%; object-fit: cover; }
-        .gallery-overlay { 
-            position: absolute; bottom: 0; left: 0; right: 0; 
-            background: rgba(0,0,0,0.6); color: white; 
-            font-size: 11px; padding: 8px; text-align: center;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-        }
-
-        /* MENY (Bunn - Hvit pille) */
-        .bottom-nav {
-            position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%);
-            width: 90%; max-width: 400px; height: 70px;
-            background: white; border-radius: 35px;
-            display: flex; justify-content: space-around; align-items: center;
-            z-index: 5000; box-shadow: 0 5px 25px rgba(0,0,0,0.1);
-            padding: 0 10px;
-        }
-        .nav-item { background: none; border: none; display: flex; flex-direction: column; align-items: center; color: #ccc; width: 50px; cursor: pointer; }
-        .nav-item.active { color: var(--primary); }
-        .nav-icon { width: 24px; height: 24px; fill: currentColor; margin-bottom: 4px; }
-        .nav-text { font-size: 9px; font-weight: bold; text-transform: uppercase; }
-        
-        .cam-btn-round {
-            width: 70px; height: 70px; border-radius: 50%; 
-            background: var(--primary); border: 5px solid white; 
-            position: relative; top: -35px;
-            display: flex; justify-content: center; align-items: center; 
-            box-shadow: 0 -5px 15px rgba(0,0,0,0.1); cursor: pointer;
-        }
-
-        /* Leaderboard Style */
-        .lb-list { padding: 20px; }
+        .lb-list { padding: 0 20px; }
         .lb-item { display: flex; align-items: center; background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .lb-rank { width: 30px; font-weight: bold; color: #999; }
         .lb-avatar { width: 40px; height: 40px; border-radius: 50%; background: #eee; margin-right: 15px; display: flex; justify-content: center; align-items: center; font-size: 22px; }
         .lb-info { flex-grow: 1; }
         .lb-name { font-weight: bold; color: #333; font-size: 14px; }
-        .lb-xp { font-size: 11px; color: #777; }
         .lb-score { font-weight: bold; color: var(--primary); }
         .lb-item.me { border: 2px solid var(--primary); background: #f0fdf4; }
 
-        /* Butikk Style */
-        .shop-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; padding: 20px; }
-        .shop-item { background: white; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
-        .buy-btn { background: var(--primary); color: white; border: none; width: 100%; padding: 10px; border-radius: 10px; margin-top: 10px; font-weight: bold; cursor: pointer; }
+        /* CHAT WINDOW */
+        #chatOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 5000; display: none; flex-direction: column; }
+        .chat-header { padding: 15px; background: var(--primary); color: white; font-weight: bold; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); padding-top: max(15px, env(safe-area-inset-top)); }
+        
+        /* Oppdatert Tilbake-knapp */
+        .chat-close { font-size: 30px; cursor: pointer; padding: 0 10px; line-height: 1; }
+        
+        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f0f2f5; }
+        .msg { max-width: 70%; padding: 10px 15px; border-radius: 20px; font-size: 14px; line-height: 1.4; position: relative; }
+        .msg.me { align-self: flex-end; background: var(--chat-bubble-me); color: white; border-bottom-right-radius: 5px; }
+        .msg.them { align-self: flex-start; background: var(--chat-bubble-them); color: black; border-bottom-left-radius: 5px; }
+        .typing-indicator { font-size: 10px; color: #777; margin-left: 10px; display: none; padding-bottom: 5px; }
+        
+        /* Chat Input Form */
+        .chat-input-form { padding: 10px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
+        .chat-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 16px; }
+        .chat-send { background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
 
-        .me-dot { width: 20px; height: 20px; background: #3498db; border: 4px solid white; border-radius: 50%; box-shadow: 0 0 15px rgba(52, 152, 219, 0.6); }
+        /* PROFIL */
+        .profile-header { background-color: var(--primary); padding: 40px 20px 20px; color: white; text-align: center; display: flex; flex-direction: column; align-items: center; }
+        .profile-avatar-container { width: 120px; height: 120px; position: relative; margin-bottom: 15px; }
+        .profile-avatar { font-size: 60px; background: #2c3e50; width: 100%; height: 100%; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 4px solid rgba(255,255,255,0.3); overflow: hidden; color: white; }
+        .custom-avatar-img { width: 100%; height: 100%; object-fit: cover; }
+        .equipped-on-profile { position: absolute; bottom: -5px; right: -5px; font-size: 40px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3)); z-index: 20; }
+        .edit-avatar-btn { position: absolute; bottom: 0; right: 0; background: var(--primary); color: white; border: 3px solid white; border-radius: 50%; width: 35px; height: 35px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 16px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 30; }
+        
+        #avatarSelector { display: none; flex-direction: column; align-items: center; background: white; padding: 15px; border-radius: 15px; margin-top: 10px; width: 90%; max-width: 350px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+        #avatarSelector.show { display: flex; }
+        .avatar-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; width: 100%; margin-bottom: 10px; }
+        .avatar-choice { font-size: 30px; padding: 10px; background: rgba(255,255,255,0.2); border-radius: 50%; cursor: pointer; flex-shrink: 0; color: #333; border: 1px solid #eee; }
+        .avatar-choice.selected { background: #e8f8f5; border: 2px solid var(--primary); }
+        .upload-btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; display: flex; align-items: center; gap: 5px; }
+
+        /* MENY */
+        .bottom-nav { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 400px; height: 65px; background: white; border-radius: 35px; display: flex; justify-content: space-around; align-items: center; z-index: 4500; box-shadow: 0 5px 25px rgba(0,0,0,0.15); padding: 0 10px; }
+        .nav-item { display: flex; flex-direction: column; align-items: center; color: #ccc; cursor: pointer; width: 50px; }
+        .nav-item.active { color: var(--primary); }
+        .nav-icon { width: 24px; height: 24px; fill: currentColor; }
+        .cam-btn-round { width: 65px; height: 65px; border-radius: 50%; background: var(--primary); border: 5px solid white; position: relative; top: -30px; display: flex; justify-content: center; align-items: center; box-shadow: 0 -5px 15px rgba(0,0,0,0.1); cursor: pointer; }
     </style>
 </head>
 <body>
 
-    <div id="startScreen">
-        <h1 style="color:var(--primary); font-size: 40px; margin-bottom: 5px;">EcoDex</h1>
-        <p style="color:#7f8c8d;">Utforsk verden!</p>
-        <button class="start-btn" onclick="initGame()">START 📍</button>
-        <p style="font-size: 13px; margin-top: 30px; color: #999; max-width: 80%;">
-            Tillat GPS. Trykk "Flytt Meg" for manuell posisjon (1 forsøk).
+    <div id="loginScreen">
+        <div style="font-size: 40px; font-weight:900; margin-bottom:20px;">ECODEX</div>
+        <div class="login-box">
+            <h2 style="color:#333; margin:0; margin-bottom: 20px;">Logg Inn</h2>
+            <input type="text" id="usernameInput" class="login-input" placeholder="Brukernavn">
+            <input type="password" id="passwordInput" class="login-input" placeholder="Passord">
+            <div id="loginError"></div>
+            <button class="login-btn" onclick="performLogin()">START ▶</button>
+        </div>
+        <p style="font-size:11px; margin-top:20px; opacity:0.8; max-width: 250px; text-align: center;">
+            Ny? Skriv et nytt navn og passord for å lage konto.
         </p>
+    </div>
+
+    <div id="aiLoading">
+        <div class="spinner"></div>
+        <p style="margin-top:20px; font-weight:bold; color:#555;">Kobler til hjernen...</p>
     </div>
 
     <div id="map"></div>
     
-    <button class="manual-pos-btn" id="btnManualPos" onclick="activateManualMode()" title="Flytt posisjon">📍</button>
-
     <div class="top-hud">
         <div class="hud-bg">
-            <div class="logo">ECODEX</div>
+            <div style="font-weight:900; color:var(--primary);">ECODEX</div>
             <div class="score-badge">⭐ <span id="scoreVal">0</span></div>
         </div>
-        <div id="debugStatus">Klar til start...</div>
+        <div id="debugStatus">Søker posisjon...</div>
     </div>
 
-    <div class="robot-wrapper" onclick="robotTalk()">
-        <div class="robot-bubble" id="robotMsg">Hei!</div>
-        <div class="robot-body">🤖</div>
+    <div class="robot-wrapper" onclick="showRobotTip()">
+        <div class="robot-bubble" id="robotMsg">Trykk på meg for tips!</div>
+        <img src="robot.png" class="robot-body" alt="Bot" onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712109.png'">
     </div>
 
     <div id="cameraPage">
@@ -248,385 +206,702 @@
         <canvas id="photoCanvas"></canvas>
         <img id="capturedPhoto" src="">
         <div class="camera-ui">
+            <div id="aiResultText">Analyserer...</div>
             <button class="snap-btn" id="snapBtn" onclick="takePhoto()"></button>
-            <button class="save-btn" id="saveBtn" onclick="savePhotoAndGetPoints()">LAGRE</button>
+            <button class="save-btn" id="saveBtn" onclick="savePhoto()">LAGRE BILDE</button>
         </div>
     </div>
 
-    <div id="imageModal">
-        <div class="modal-close" onclick="closeImageModal()">✕</div>
-        <img id="fullImage" src="" alt="Stort bilde">
-        <div id="imgScoreDisplay">Verdi: 0 poeng</div>
-        <div class="modal-controls">
-            <div class="cost-info">Kjøp navneendring: -50 poeng</div>
-            <div class="name-row">
-                <input type="text" id="imgNameInput" placeholder="Nytt navn...">
-                <button class="save-name-btn" onclick="saveImageName()">Kjøp</button>
-            </div>
-            <button class="delete-btn" onclick="deleteCurrentPhoto()">Slett Bilde 🗑️</button>
+    <div id="chatOverlay">
+        <div class="chat-header">
+            <div class="chat-close" onclick="closeChat()">❮</div>
+            <div id="chatNameTitle">Navn</div>
         </div>
+        <div class="chat-messages" id="chatMessages"></div>
+        <div class="typing-indicator" id="typingIndicator">Skriver...</div>
+        
+        <form class="chat-input-form" onsubmit="handleChatSubmit(event)">
+            <input type="text" class="chat-input" id="chatInput" placeholder="Skriv en melding..." autocomplete="off">
+            <button type="submit" class="chat-send">➤</button>
+        </form>
     </div>
 
     <div id="shopPage" class="page">
-        <h2 style="text-align: center; color: #333; padding: 20px;">Butikk</h2>
-        <div id="shopList" class="shop-grid"></div>
+        <h2 class="section-title">Butikk</h2>
+        <div id="shopList" class="grid-container"></div>
     </div>
     
+    <div id="socialPage" class="page">
+        <div class="tab-bar">
+            <button class="tab-btn active" onclick="switchSocialTab('friends')" id="tabFriends">VENNER</button>
+            <button class="tab-btn" onclick="switchSocialTab('add')" id="tabAdd">LEGG TIL</button>
+            <button class="tab-btn" onclick="switchSocialTab('leaderboard')" id="tabLeaderboard">TOPPLISTE</button>
+        </div>
+
+        <div id="viewFriends">
+            <h2 class="section-title">Mine Venner (Chat her)</h2>
+            <div id="friendList" class="grid-container"></div>
+        </div>
+
+        <div id="viewAdd" style="display:none;">
+            <h2 class="section-title">Søk etter personer</h2>
+            <div class="search-row">
+                <input type="text" id="searchFriendInput" class="search-input" placeholder="Navn (f.eks. Lars)...">
+                <button class="search-btn" onclick="searchFriends()">SØK</button>
+            </div>
+            <div id="addFriendList" class="grid-container"></div>
+        </div>
+
+        <div id="viewLeaderboard" style="display:none;">
+            <h2 class="section-title">Toppliste (Global)</h2>
+            <div id="leaderboardList" class="lb-list"></div>
+        </div>
+    </div>
+
     <div id="profilePage" class="page" style="padding: 0;">
         <div class="profile-header">
-            <div class="profile-avatar" id="currentAvatar">👤</div>
-            <div class="profile-name" onclick="editPlayerName()">
-                <span id="playerNameDisplay">Meg (Deg)</span> ✎
+            <div class="profile-avatar-container">
+                <div class="profile-avatar" id="profileAvatarDisplay">👤</div>
+                <div class="equipped-on-profile" id="profileItemDisplay"></div>
+                <div class="edit-avatar-btn" onclick="toggleAvatarMenu()">✎</div>
             </div>
-            <div class="profile-level">Nivå <span id="levelVal">1</span></div>
+
+            <div class="profile-name" id="profileNameDisplay" style="font-weight:800; font-size:24px;">Gjest</div>
             
-            <div style="font-size:11px; opacity:0.8; margin-bottom:5px;">Velg Avatar:</div>
-            <div class="avatar-container" id="avatarSelector">
-                </div>
+            <div id="avatarSelector">
+                <p style="font-size:12px; color:#777; margin-bottom:5px;">Velg emoji eller last opp bilde:</p>
+                <div class="avatar-scroll" id="emojiList"></div>
+                <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📷 Last opp bilde</button>
+                <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileUpload(this)">
+            </div>
+
+            <button class="logout-btn" onclick="logout()">Logg ut</button>
         </div>
         
-        <div class="profile-stats">
-            <div class="stat-box">
-                <div class="stat-val" id="totalScoreVal">0</div>
-                <div class="stat-label">POENG</div>
-            </div>
-            <div class="stat-box">
-                <div class="stat-val" id="photoCountVal">0</div>
-                <div class="stat-label">BILDER</div>
-            </div>
-        </div>
+        <h2 class="section-title">Ryggsekk</h2>
+        <div id="inventoryList" class="grid-container"></div>
         
-        <div class="section-title">Mitt Galleri</div>
-        <div id="gallery" class="gallery-grid"></div>
-        <p id="emptyMsg" style="text-align: center; color: #999; margin-top: 40px;">Ingen bilder tatt enda.</p>
-    </div>
-    
-    <div id="leaderboardPage" class="page">
-        <h2 style="text-align: center; color: #333; padding: 20px;">Toppliste</h2>
-        <div class="lb-list" id="lbList"></div>
+        <h2 class="section-title">Mine Funn</h2>
+        <div id="gallery" class="grid-container"></div>
     </div>
 
     <div class="bottom-nav">
         <div class="nav-item active" id="btnMap" onclick="showPage('map')">
             <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20.5 3l-6 2-6-2-6 2v15l6 2 6-2 6 2 2.5-0.8V4.2L20.5 3zM14 17.5l-6 2-6-2V5.5l6 2 6-2v12z"/></svg>
-            <span class="nav-text">KART</span>
+            <span style="font-size:9px; font-weight:bold;">KART</span>
         </div>
         <div class="nav-item" id="btnShop" onclick="showPage('shop')">
             <svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
-            <span class="nav-text">BUTIKK</span>
+            <span style="font-size:9px; font-weight:bold;">BUTIKK</span>
         </div>
         <div class="cam-btn-round" onclick="openCamera()">
             <svg fill="white" width="32" height="32" viewBox="0 0 24 24"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm6 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5z"/></svg>
         </div>
+        <div class="nav-item" id="btnSocial" onclick="showPage('social')">
+            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <span style="font-size:9px; font-weight:bold;">SOSIALT</span>
+        </div>
         <div class="nav-item" id="btnProfile" onclick="showPage('profile')">
             <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
-            <span class="nav-text">PROFIL</span>
-        </div>
-        <div class="nav-item" id="btnLeaderboard" onclick="showPage('leaderboard')">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-5 14h-2v-4h2v4zm-4 0H8v-8h2v8zm8 0h-2v-6h2v6z"/></svg>
-            <span class="nav-text">TOPP</span>
+            <span style="font-size:9px; font-weight:bold;">PROFIL</span>
         </div>
     </div>
 
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        let map, playerMarker;
-        let score = 0;
-        let inventory = [];
-        let photos = []; 
-        let manualLocationMode = false;
-        let manualPositionUsed = false; 
-        let currentLat = 0, currentLng = 0;
-        let currentViewingPhotoId = null;
-        let playerAvatar = "👤"; 
-        let playerName = "Meg (Deg)";
+        const defaultState = {
+            score: 0,
+            avatar: "👤",
+            inventory: [], 
+            equipped: null, 
+            photos: [],
+            friends: ["Tod Erik (AI)"], 
+            chats: {} 
+        };
+        
+        let state = { ...defaultState, username: "Gjest" };
 
-        const avatars = ["👤", "👩", "👨", "🧙", "🧚", "🧜", "🦊", "🤖"];
-
-        const shopItems = [
+        const avatars = ["👤", "👩", "👨", "🧝", "🧚", "🧙", "🧛", "🧟", "🧜", "🦊", "🐻", "🤖"];
+        
+        const items = [
             { id: 1, name: "Kompass", cost: 50, icon: "🧭" },
-            { id: 2, name: "Lys", cost: 100, icon: "🔦" },
-            { id: 3, name: "Hatt", cost: 150, icon: "🧢" },
+            { id: 2, name: "Lommelykt", cost: 100, icon: "🔦" },
+            { id: 3, name: "Caps", cost: 150, icon: "🧢" },
             { id: 4, name: "Sekk", cost: 300, icon: "🎒" },
-            { id: 5, name: "Telt", cost: 400, icon: "⛺" },
-            { id: 6, name: "Drone", cost: 500, icon: "🚁" },
-            { id: 7, name: "Kano", cost: 750, icon: "🛶" },
-            { id: 8, name: "Pro Kamera", cost: 1000, icon: "📷" }
+            { id: 5, name: "Kikkert", cost: 400, icon: "🔭" },
+            { id: 6, name: "Kano", cost: 1000, icon: "🛶" }
         ];
 
-        const mockPlayers = [
-            { name: "NaturVandrer", xp: 4520, avatar: "🧔" },
-            { name: "Skogsmusa", xp: 3460, avatar: "🐭" },
-            { name: "Fjellreven", xp: 2800, avatar: "🦊" }
+        const fakeUsers = [
+            { name: "NaturVandrer", score: 540, avatar: "🧔" },
+            { name: "Skogsmusa", score: 890, avatar: "🐭" },
+            { name: "FjellReven", score: 1200, avatar: "🦊" },
+            { name: "ByFuglen", score: 320, avatar: "🐦" },
+            { name: "TurLederen", score: 2100, avatar: "👩‍🌾" },
+            { name: "Tod Erik (AI)", score: 9999, avatar: "🤖" },
+            { name: "Lars", score: 450, avatar: "👨" },
+            { name: "Lisa", score: 670, avatar: "👩" }
         ];
+
+        const robotTips = [
+            "Husk å se etter sopp i skyggen!",
+            "Blekkspruter har tre hjerter!",
+            "Mos kan vise vei mot nord.",
+            "Haier er eldre enn trær!",
+            "Ta bilde av en blomst for poeng!",
+            "Kuer har bestevenner.",
+            "Skyer er tunge som bly!",
+            "Gå til Sosialt-menyen for å chatte med meg."
+        ];
+
+        let map, playerMarker, classifier;
+        let currentLat = 0, currentLng = 0;
+        let aiModelLoaded = false;
+        let currentChatPartner = null;
+
+        window.onload = function() {
+            const lastUser = localStorage.getItem('ecoDexLastUser');
+            if (lastUser) {
+                const allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
+                if (allUsers[lastUser]) {
+                    state = allUsers[lastUser];
+                    document.getElementById('loginScreen').style.display = 'none';
+                    startAIAndGame();
+                    return;
+                }
+            }
+        };
+
+        function performLogin() {
+            const user = document.getElementById('usernameInput').value.trim();
+            const pass = document.getElementById('passwordInput').value.trim();
+            const errDiv = document.getElementById('loginError');
+
+            if (!user || !pass) { errDiv.innerText = "Fyll ut navn og passord!"; return; }
+
+            let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
+
+            if (allUsers[user]) {
+                if (allUsers[user].password === pass) {
+                    state = allUsers[user];
+                    finishLogin(user);
+                } else {
+                    errDiv.innerText = "Feil passord.";
+                }
+            } else {
+                if(confirm(`Lag ny konto: ${user}?`)) {
+                    state = { ...defaultState, username: user, password: pass };
+                    allUsers[user] = state;
+                    localStorage.setItem('ecoDexUsers', JSON.stringify(allUsers));
+                    finishLogin(user);
+                }
+            }
+        }
+
+        function finishLogin(username) {
+            localStorage.setItem('ecoDexLastUser', username);
+            const loginScr = document.getElementById('loginScreen');
+            loginScr.style.opacity = '0';
+            setTimeout(() => { loginScr.style.display = 'none'; }, 500);
+            startAIAndGame();
+        }
+
+        function logout() {
+            if(confirm("Logge ut?")) {
+                localStorage.removeItem('ecoDexLastUser'); 
+                location.reload(); 
+            }
+        }
+
+        function startAIAndGame() {
+            document.getElementById('aiLoading').style.display = 'flex';
+            classifier = ml5.imageClassifier('MobileNet', () => {
+                aiModelLoaded = true;
+                document.getElementById('aiLoading').style.display = 'none';
+                initGame();
+            });
+        }
 
         function initGame() {
-            document.getElementById('startScreen').style.display = 'none';
-            loadData();
             setupMap();
-            updateStatus("Søker...");
-            map.locate({ setView: true, maxZoom: 18, timeout: 30000, enableHighAccuracy: true });
-            startContinuousGPS();
-            renderShop();
-            setupAvatarSelector();
+            setupUI();
+            robotTalk(`Velkommen, ${state.username}!`);
+            startGPS();
         }
 
-        function startContinuousGPS() {
-            if (navigator.geolocation) {
-                navigator.geolocation.watchPosition(
-                    (pos) => {
-                        currentLat = pos.coords.latitude;
-                        currentLng = pos.coords.longitude;
-                        if (!manualLocationMode && !manualPositionUsed) {
-                            playerMarker.setLatLng([currentLat, currentLng]);
-                            updateStatus("📍 GPS Aktiv");
-                        }
-                    },
-                    (err) => console.warn(err), { enableHighAccuracy: true }
-                );
+        function saveState() {
+            let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
+            allUsers[state.username] = state;
+            localStorage.setItem('ecoDexUsers', JSON.stringify(allUsers));
+        }
+
+        function switchSocialTab(tab) {
+            document.getElementById('viewFriends').style.display = 'none';
+            document.getElementById('viewAdd').style.display = 'none';
+            document.getElementById('viewLeaderboard').style.display = 'none';
+            document.getElementById('tabFriends').classList.remove('active');
+            document.getElementById('tabAdd').classList.remove('active');
+            document.getElementById('tabLeaderboard').classList.remove('active');
+
+            if(tab === 'friends') {
+                document.getElementById('viewFriends').style.display = 'block';
+                document.getElementById('tabFriends').classList.add('active');
+                renderFriends();
+            } else if(tab === 'add') {
+                document.getElementById('viewAdd').style.display = 'block';
+                document.getElementById('tabAdd').classList.add('active');
+                renderAddFriends(fakeUsers.slice(0, 4));
+            } else {
+                document.getElementById('viewLeaderboard').style.display = 'block';
+                document.getElementById('tabLeaderboard').classList.add('active');
+                renderLeaderboard();
             }
         }
 
-        function updateStatus(msg) { document.getElementById('debugStatus').innerText = msg; }
+        function searchFriends() {
+            const query = document.getElementById('searchFriendInput').value.toLowerCase();
+            if(!query) return;
+            const results = fakeUsers.filter(u => u.name.toLowerCase().includes(query));
+            renderAddFriends(results);
+        }
+
+        function renderAddFriends(listToRender) {
+            const list = document.getElementById('addFriendList');
+            list.innerHTML = "";
+            if(listToRender.length === 0) { list.innerHTML = "<p style='width:200%; text-align:center; color:#999'>Ingen funnet.</p>"; return; }
+
+            listToRender.forEach(u => {
+                const isFriend = state.friends.includes(u.name);
+                list.innerHTML += `
+                <div class="item-card" onclick="${isFriend ? '' : `addFriend('${u.name}')`}">
+                    <div class="item-icon">${u.avatar}</div>
+                    <div class="item-name">${u.name}</div>
+                    <div class="item-cost" style="color:${isFriend ? '#999' : 'var(--primary)'}">
+                        ${isFriend ? 'VENNER' : 'LEGG TIL +'}
+                    </div>
+                </div>`;
+            });
+        }
+
+        function addFriend(name) {
+            if(!state.friends.includes(name)) {
+                state.friends.push(name);
+                saveState();
+                searchFriends(); 
+                robotTalk(`${name} er nå din venn!`);
+            }
+        }
+
+        function renderFriends() {
+            const list = document.getElementById('friendList');
+            list.innerHTML = "";
+            if(state.friends.length === 0) list.innerHTML = "<p style='width:200%; text-align:center; color:#999'>Ingen venner enda.</p>";
+            
+            state.friends.forEach(fname => {
+                const u = fakeUsers.find(fu => fu.name === fname) || { avatar: "👤", name: fname };
+                list.innerHTML += `
+                <div class="item-card" onclick="openChat('${u.name}')">
+                    <div class="item-icon">${u.avatar}</div>
+                    <div class="item-name">${u.name}</div>
+                    <div class="item-cost">CHAT 💬</div>
+                </div>`;
+            });
+        }
+
+        function renderLeaderboard() {
+            const list = document.getElementById('leaderboardList');
+            list.innerHTML = "";
+            let all = [...fakeUsers];
+            all.push({ name: state.username, score: state.score, avatar: state.avatar, isMe: true });
+            all.sort((a,b) => b.score - a.score);
+            all.forEach((u, i) => {
+                list.innerHTML += `
+                <div class="lb-item ${u.isMe ? 'me' : ''}">
+                    <div class="lb-rank">${i+1}</div>
+                    <div class="lb-avatar">${u.avatar}</div>
+                    <div class="lb-info"><div class="lb-name">${u.name}</div></div>
+                    <div class="lb-score">${u.score}p</div>
+                </div>`;
+            });
+        }
+
+        /* --- NY FUNKSJON FOR ROBOT-TIPS PÅ KARTET --- */
+        function showRobotTip() {
+            const randomTip = robotTips[Math.floor(Math.random() * robotTips.length)];
+            robotTalk(randomTip);
+        }
+
+        function openChat(name) {
+            currentChatPartner = name;
+            document.getElementById('chatNameTitle').innerText = name;
+            document.getElementById('chatOverlay').style.display = 'flex';
+            renderMessages();
+        }
+
+        function closeChat() {
+            document.getElementById('chatOverlay').style.display = 'none';
+            currentChatPartner = null;
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('chatMessages');
+            container.innerHTML = "";
+            const history = state.chats[currentChatPartner] || [];
+            
+            if (history.length === 0) {
+                container.innerHTML = `<div style="text-align:center; color:#999; font-size:12px; margin-top:20px;">Start samtalen med ${currentChatPartner}!</div>`;
+            }
+
+            history.forEach(msg => {
+                const div = document.createElement('div');
+                div.className = `msg ${msg.sender}`;
+                div.innerText = msg.text;
+                container.appendChild(div);
+            });
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function getBotResponse(text) {
+            text = text.toLowerCase();
+            if (text.includes("hei") || text.includes("hallo")) return "Hei der! Klar for å utforske naturen?";
+            if (text.includes("hvem")) return "Jeg er Tod Erik, din virtuelle guide i EcoDex!";
+            if (text.includes("hva")) return "Jeg kan hjelpe deg med å identifisere ting, eller bare prate.";
+            if (text.includes("poeng")) return "Du får poeng ved å ta bilder av dyr og planter.";
+            if (text.includes("butikk")) return "I butikken kan du kjøpe utstyr for poengene dine.";
+            if (text.includes("kjedelig")) return "Gå ut en tur! Naturen er aldri kjedelig hvis du ser nøye etter.";
+            if (text.includes("takk")) return "Bare hyggelig!";
+            return "Interessant! Jeg lærer fortsatt om verden.";
+        }
+
+        function getFriendResponse(text) {
+            const t = text.toLowerCase();
+            if(t.includes("hei")) return "Hei på deg! 👋";
+            if(t.includes("skjer")) return "Jeg er ute og ser etter dyr! 🦊";
+            if(t.includes("hvor")) return "Jeg er i skogen ved elva.";
+            if(t.includes("kult") || t.includes("wow")) return "Ja, ikke sant?";
+            if(t.includes("bilde")) return "Har du tatt noen fine bilder i dag? 📸";
+            return "Spennende! Vi må spille sammen snart.";
+        }
+
+        function handleChatSubmit(e) {
+            e.preventDefault(); 
+            sendMessage();
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('chatInput');
+            const text = input.value.trim();
+            
+            if(!text) return;
+            if(!currentChatPartner) return alert("Feil: Ingen chat partner.");
+            
+            if(!state.chats[currentChatPartner]) state.chats[currentChatPartner] = [];
+            state.chats[currentChatPartner].push({ sender: 'me', text: text });
+            
+            input.value = "";
+            input.focus(); 
+            renderMessages();
+            saveState();
+
+            document.getElementById('typingIndicator').style.display = 'block';
+
+            setTimeout(() => {
+                let reply;
+                if (currentChatPartner.includes("Tod Erik")) {
+                    reply = getBotResponse(text); 
+                } else {
+                    reply = getFriendResponse(text); 
+                }
+                
+                state.chats[currentChatPartner].push({ sender: 'them', text: reply });
+                
+                if(currentChatPartner && document.getElementById('chatOverlay').style.display !== 'none') { 
+                    document.getElementById('typingIndicator').style.display = 'none';
+                    renderMessages();
+                }
+                saveState();
+            }, 1000);
+        }
+
+        function renderShop() {
+            const div = document.getElementById('shopList');
+            div.innerHTML = "";
+            items.forEach(item => {
+                const owned = state.inventory.includes(item.id);
+                div.innerHTML += `
+                <div class="item-card" onclick="buyItem(${item.id}, ${item.cost})">
+                    <div class="item-icon">${item.icon}</div>
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-cost" style="color:${owned ? '#ccc' : ''}">${owned ? 'Eier' : item.cost + ' p'}</div>
+                </div>`;
+            });
+        }
+
+        function buyItem(id, cost) {
+            if(state.inventory.includes(id)) return; 
+            if(state.score >= cost) {
+                state.score -= cost;
+                state.inventory.push(id);
+                saveState();
+                updateUI();
+                renderShop();
+                renderInventory();
+                robotTalk("Kjøpt! Sjekk ryggsekken din.");
+            } else {
+                robotTalk("Du har ikke nok poeng!");
+            }
+        }
+
+        function renderInventory() {
+            const div = document.getElementById('inventoryList');
+            div.innerHTML = "";
+            if(state.inventory.length === 0) div.innerHTML = "<p style='grid-column:span 3; text-align:center; color:#999;'>Tomt her...</p>";
+            
+            state.inventory.forEach(id => {
+                const item = items.find(i => i.id === id);
+                const isEquipped = state.equipped === id;
+                div.innerHTML += `
+                <div class="item-card ${isEquipped ? 'equipped' : ''}" onclick="equipItem(${id})">
+                    <div class="item-icon">${item.icon}</div>
+                    <div class="item-name">${item.name}</div>
+                    <div class="item-cost">${isEquipped ? 'PÅ' : 'BRUK'}</div>
+                </div>`;
+            });
+        }
+
+        function equipItem(id) {
+            if(state.equipped === id) state.equipped = null; 
+            else state.equipped = id; 
+            saveState();
+            renderInventory();
+            updateUI();
+            updatePlayerMarker();
+        }
+
+        function toggleAvatarMenu() {
+            const menu = document.getElementById('avatarSelector');
+            if (menu.classList.contains('show')) {
+                menu.classList.remove('show');
+            } else {
+                menu.classList.add('show');
+                if(document.getElementById('emojiList').innerHTML === "") setupEmojiList();
+            }
+        }
+
+        function setupEmojiList() {
+            const avDiv = document.getElementById('emojiList');
+            avDiv.innerHTML = "";
+            avatars.forEach(av => {
+                const s = document.createElement('div');
+                s.className = `avatar-choice ${av === state.avatar ? 'selected' : ''}`;
+                s.innerText = av;
+                s.onclick = () => {
+                    state.avatar = av;
+                    saveState();
+                    updateUI();
+                    updatePlayerMarker();
+                    toggleAvatarMenu();
+                };
+                avDiv.appendChild(s);
+            });
+        }
+
+        function handleFileUpload(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    state.avatar = e.target.result; 
+                    saveState();
+                    updateUI();
+                    updatePlayerMarker();
+                    toggleAvatarMenu();
+                }
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+
+        function setupUI() {
+            renderShop();
+            renderInventory();
+            renderGallery();
+            updateUI();
+        }
+
+        function updateUI() {
+            document.getElementById('scoreVal').innerText = state.score;
+            document.getElementById('profileNameDisplay').innerText = state.username;
+            
+            const avatarContainer = document.getElementById('profileAvatarDisplay');
+            if (state.avatar.startsWith('data:image')) {
+                avatarContainer.innerHTML = `<img src="${state.avatar}" class="custom-avatar-img">`;
+                avatarContainer.style.background = "none";
+                avatarContainer.style.border = "none";
+            } else {
+                avatarContainer.innerHTML = state.avatar;
+                avatarContainer.style.background = "#2c3e50";
+                avatarContainer.style.border = "4px solid rgba(255,255,255,0.3)";
+            }
+            
+            let icon = "";
+            if(state.equipped) {
+                const i = items.find(x => x.id === state.equipped);
+                if(i) icon = i.icon;
+            }
+            document.getElementById('profileItemDisplay').innerText = icon;
+        }
+
+        function renderGallery() {
+            const div = document.getElementById('gallery');
+            div.innerHTML = "";
+            [...state.photos].reverse().forEach(p => {
+                div.innerHTML += `
+                <div class="item-card" style="padding:0; overflow:hidden;">
+                    <img src="${p.src}" style="width:100%; height:100px; object-fit:cover;">
+                    <div style="font-size:10px; padding:5px;">${p.label}<br><b>${p.points}p</b></div>
+                </div>`;
+            });
+        }
 
         function setupMap() {
-            map = L.map('map', { zoomControl: false }).setView([0, 0], 2);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '', maxZoom: 19 }).addTo(map);
-            const icon = L.divIcon({ className: 'p-icon', html: '<div class="me-dot"></div>', iconSize: [20, 20] });
-            playerMarker = L.marker([0, 0], { icon: icon }).addTo(map);
-
-            map.on('locationfound', (e) => {
-                if(!manualLocationMode && !manualPositionUsed) {
-                    currentLat = e.latlng.lat; currentLng = e.latlng.lng;
-                    updateStatus("📍 GPS Funnet!");
-                    playerMarker.setLatLng(e.latlng);
-                    if (Math.random() > 0.8) spawnCreature(e.latlng.lat + 0.0005, e.latlng.lng + 0.0005);
-                }
-            });
-            
-            map.on('locationerror', () => { updateStatus("GPS feil. Bruk knappen."); });
-
-            map.on('click', function (e) {
-                if (manualLocationMode) {
-                    currentLat = e.latlng.lat; currentLng = e.latlng.lng;
-                    playerMarker.setLatLng(e.latlng); map.setView(e.latlng, 17);
-                    updateStatus("Manuell posisjon satt");
-                    spawnCreature(e.latlng.lat + 0.0003, e.latlng.lng + 0.0003);
-                    manualLocationMode = false;
-                    manualPositionUsed = true; 
-                    const btn = document.getElementById('btnManualPos');
-                    btn.disabled = true;
-                    btn.style.opacity = "0.5";
-                    robotTalk("Posisjon satt! (1 forsøk brukt)");
-                }
-            });
+            if(map) return; 
+            map = L.map('map', { zoomControl: false }).setView([59.91, 10.75], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            updatePlayerMarker();
         }
 
-        function activateManualMode() {
-            if(manualPositionUsed) {
-                robotTalk("Du har brukt opp forsøket ditt!");
-                return;
+        function getPlayerIconHTML() {
+            let itemIcon = "";
+            if(state.equipped) {
+                const item = items.find(i => i.id === state.equipped);
+                if(item) itemIcon = item.icon;
             }
-            manualLocationMode = true;
-            updateStatus("KLIKK PÅ KARTET (1 forsøk)");
-            robotTalk("Velg hvor du er. Du har 1 forsøk!");
+
+            let avatarHTML = "";
+            if (state.avatar.startsWith('data:image')) {
+                avatarHTML = `<img src="${state.avatar}" class="player-map-img">`;
+            } else {
+                avatarHTML = `<div style="font-size:40px;">${state.avatar}</div>`;
+            }
+
+            return `<div class="marker-anim" style="position:relative;">
+                        ${avatarHTML}
+                        <div style="position:absolute; bottom:-5px; right:-5px; font-size:25px; z-index:10;">${itemIcon}</div>
+                    </div>`;
         }
 
-        function spawnCreature(lat, lng) {
-            const icon = L.divIcon({ html: '<div style="font-size:35px">🦉</div>', className: 'c', iconSize: [35, 35] });
-            L.marker([lat, lng], { icon: icon }).addTo(map).bindPopup("En ugle!");
-            robotTalk("Jeg ser et dyr!");
+        function updatePlayerMarker() {
+            if(!map) return;
+            const html = getPlayerIconHTML();
+            const icon = L.divIcon({ className: 'player-map-icon', html: html, iconSize: [50, 50] });
+            if(playerMarker) playerMarker.setIcon(icon);
+            else playerMarker = L.marker([currentLat, currentLng], { icon: icon }).addTo(map);
+        }
+
+        function startGPS() {
+            if(navigator.geolocation) {
+                navigator.geolocation.watchPosition(pos => {
+                    currentLat = pos.coords.latitude;
+                    currentLng = pos.coords.longitude;
+                    const latlng = [currentLat, currentLng];
+                    if(playerMarker) playerMarker.setLatLng(latlng);
+                    else updatePlayerMarker();
+                    map.setView(latlng); 
+                    document.getElementById('debugStatus').innerText = "GPS Aktiv ✅";
+                }, err => {
+                    document.getElementById('debugStatus').innerText = "GPS Feil ❌";
+                }, { enableHighAccuracy: true });
+            }
         }
 
         function openCamera() {
             document.getElementById('cameraPage').classList.add('active');
-            document.getElementById('capturedPhoto').style.display = 'none';
-            document.getElementById('saveBtn').style.display = 'none';
-            document.getElementById('saveBtn').innerText = "LAGRE";
             document.getElementById('snapBtn').style.display = 'block';
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+            document.getElementById('saveBtn').style.display = 'none';
+            document.getElementById('capturedPhoto').style.display = 'none';
+            document.getElementById('aiResultText').style.display = 'none';
+            const constraints = { video: { facingMode: 'environment', width: { ideal: 1920 }, height: { ideal: 1080 } } };
+            navigator.mediaDevices.getUserMedia(constraints)
                 .then(stream => { document.getElementById('videoFeed').srcObject = stream; })
-                .catch(err => alert("Kamera Feil: " + err));
+                .catch(err => alert("Kamerafeil: " + err));
         }
+
         function closeCamera() {
             const vid = document.getElementById('videoFeed');
-            if (vid.srcObject) vid.srcObject.getTracks().forEach(t => t.stop());
+            if(vid.srcObject) vid.srcObject.getTracks().forEach(t => t.stop());
             document.getElementById('cameraPage').classList.remove('active');
         }
+
         function takePhoto() {
             const vid = document.getElementById('videoFeed');
             const can = document.getElementById('photoCanvas');
             const img = document.getElementById('capturedPhoto');
             can.width = vid.videoWidth; can.height = vid.videoHeight;
             can.getContext('2d').drawImage(vid, 0, 0);
-            img.src = can.toDataURL('image/png'); img.style.display = 'block';
+            img.src = can.toDataURL('image/jpeg', 0.9); 
+            img.style.display = 'block';
             document.getElementById('snapBtn').style.display = 'none';
-            
-            const potentialPoints = Math.floor(Math.random() * 201) + 50;
-            const saveBtn = document.getElementById('saveBtn');
-            saveBtn.style.display = 'block';
-            saveBtn.innerText = `LAGRE (+${potentialPoints}p)`;
-            saveBtn.dataset.points = potentialPoints;
+            document.getElementById('aiResultText').innerText = "Analyserer bilde...";
+            document.getElementById('aiResultText').style.display = 'block';
+
+            if(aiModelLoaded) {
+                classifier.classify(img, (err, results) => {
+                    if(err) showResult("Ukjent objekt", 10);
+                    else processAIResults(results);
+                });
+            } else showResult("AI ikke klar", 10);
         }
-        function savePhotoAndGetPoints() {
-            const saveBtn = document.getElementById('saveBtn');
-            const pointsForThisPic = parseInt(saveBtn.dataset.points) || 100;
-            score += pointsForThisPic;
-            const newPhoto = { id: Date.now(), src: document.getElementById('capturedPhoto').src, name: "Uten navn", score: pointsForThisPic };
-            photos.push(newPhoto);
-            saveData(); updateScoreUI(); updateProfileUI(); renderGallery();
-            robotTalk(`Bilde lagret! +${pointsForThisPic}p`);
+
+        function processAIResults(results) {
+            const topResult = results[0].label;
+            let points = 20; 
+            let msg = `Jeg ser: ${topResult}`;
+            const natureWords = ["bird", "flower", "tree", "plant", "dog", "cat", "animal", "insect", "fish", "grass", "leaf", "mushroom", "sea"];
+            const rareWords = ["eagle", "bear", "wolf", "orchid", "fox"];
+            const lowerLabel = topResult.toLowerCase();
+            if (rareWords.some(w => lowerLabel.includes(w))) { points = 500; msg += " (SJELDEN! ⭐)"; }
+            else if (natureWords.some(w => lowerLabel.includes(w))) { points = 150; msg += " (Naturfunn! 🌿)"; }
+            else { points = 10; msg += " (Ikke så mye natur?)"; }
+            showResult(msg, points);
+        }
+
+        function showResult(text, pts) {
+            const ui = document.getElementById('aiResultText');
+            ui.innerText = text;
+            const btn = document.getElementById('saveBtn');
+            btn.innerText = `LAGRE (+${pts} poeng)`;
+            btn.dataset.points = pts;
+            btn.dataset.label = text;
+            btn.style.display = 'block';
+        }
+
+        function savePhoto() {
+            const pts = parseInt(document.getElementById('saveBtn').dataset.points);
+            const label = document.getElementById('saveBtn').dataset.label;
+            state.score += pts;
+            state.photos.push({ src: document.getElementById('capturedPhoto').src, label: label, points: pts });
+            saveState();
+            updateUI();
+            robotTalk(`Bra jobba! Du fikk ${pts} poeng.`);
             closeCamera();
         }
 
-        function setupAvatarSelector() {
-            const container = document.getElementById('avatarSelector');
-            container.innerHTML = "";
-            avatars.forEach(av => {
-                const span = document.createElement('span');
-                span.className = `avatar-option ${av === playerAvatar ? 'selected' : ''}`;
-                span.innerText = av;
-                span.onclick = () => {
-                    playerAvatar = av;
-                    document.getElementById('currentAvatar').innerText = av;
-                    saveData();
-                    setupAvatarSelector(); 
-                };
-                container.appendChild(span);
-            });
-            document.getElementById('currentAvatar').innerText = playerAvatar;
-            document.getElementById('playerNameDisplay').innerText = playerName;
-        }
-
-        function editPlayerName() {
-            const newName = prompt("Skriv inn nytt kallenavn:", playerName);
-            if (newName && newName.trim() !== "") {
-                playerName = newName.trim();
-                document.getElementById('playerNameDisplay').innerText = playerName;
-                saveData();
-            }
-        }
-
-        function openImageModal(id) {
-            const photo = photos.find(p => p.id === id);
-            if (!photo) return;
-            currentViewingPhotoId = id;
-            document.getElementById('fullImage').src = photo.src;
-            document.getElementById('imgScoreDisplay').innerText = `Verdi: ${photo.score} poeng`;
-            document.getElementById('imgNameInput').value = photo.name === "Uten navn" ? "" : photo.name;
-            document.getElementById('imageModal').classList.add('active');
-        }
-        function closeImageModal() {
-            document.getElementById('imageModal').classList.remove('active');
-            currentViewingPhotoId = null;
-        }
-        function saveImageName() {
-            const cost = 50;
-            const name = document.getElementById('imgNameInput').value;
-            const photo = photos.find(p => p.id === currentViewingPhotoId);
-            if (photo && name) {
-                if (score >= cost) {
-                    score -= cost; photo.name = name; saveData(); updateScoreUI(); renderGallery(); closeImageModal(); robotTalk("Navn kjøpt! (-50p)");
-                } else { alert("Du trenger 50 poeng for å endre navn!"); }
-            }
-        }
-        function deleteCurrentPhoto() {
-            if(currentViewingPhotoId && confirm("Slette bildet?")) {
-                photos = photos.filter(p => p.id !== currentViewingPhotoId);
-                saveData(); updateProfileUI(); renderGallery(); closeImageModal(); robotTalk("Bilde slettet.");
-            }
-        }
-
-        function renderGallery() {
-            const gallery = document.getElementById('gallery');
-            gallery.innerHTML = "";
-            if (photos.length === 0) { document.getElementById('emptyMsg').style.display = 'block'; return; }
-            document.getElementById('emptyMsg').style.display = 'none';
-            [...photos].reverse().forEach(p => {
-                const div = document.createElement('div');
-                div.className = 'gallery-item';
-                div.onclick = function() { openImageModal(p.id); };
-                div.innerHTML = `<img src="${p.src}" class="gallery-img"><div class="gallery-overlay">${p.name} <span class="gallery-score">(${p.score}p)</span></div>`;
-                gallery.appendChild(div);
-            });
-        }
-
-        function renderLeaderboard() {
-            const list = document.getElementById('lbList');
-            list.innerHTML = "";
-            let sourceData = [...mockPlayers];
-            sourceData.push({ name: playerName, xp: score, avatar: playerAvatar, isMe: true });
-            sourceData.sort((a, b) => b.xp - a.xp);
-            sourceData.forEach((p, index) => {
-                const item = document.createElement('div');
-                item.className = `lb-item ${p.isMe ? 'me' : ''}`;
-                item.innerHTML = `<div class="lb-rank">${index + 1}</div><div class="lb-avatar">${p.avatar}</div><div class="lb-info"><div class="lb-name">${p.name}</div><div class="lb-xp">Level ${Math.floor(p.xp/1000)+1}</div></div><div class="lb-score">${p.xp}</div>`;
-                list.appendChild(item);
-            });
-        }
-
-        function loadData() {
-            const s = localStorage.getItem('ecoDexScore');
-            const i = localStorage.getItem('ecoDexInv');
-            const p = localStorage.getItem('ecoDexPhotoObjects'); 
-            const a = localStorage.getItem('ecoDexAvatar');
-            const m = localStorage.getItem('ecoDexManualUsed');
-            const n = localStorage.getItem('ecoDexPlayerName');
-            if (s) score = parseInt(s);
-            if (i) inventory = JSON.parse(i);
-            if (p) photos = JSON.parse(p);
-            if (a) playerAvatar = a;
-            if (m) manualPositionUsed = (m === 'true');
-            if (n) playerName = n;
-            
-            if(manualPositionUsed) {
-                const btn = document.getElementById('btnManualPos');
-                btn.disabled = true;
-                btn.style.opacity = "0.5";
-            }
-            updateScoreUI(); updateProfileUI(); renderGallery();
-        }
-        function saveData() { 
-            localStorage.setItem('ecoDexScore', score); 
-            localStorage.setItem('ecoDexInv', JSON.stringify(inventory));
-            localStorage.setItem('ecoDexPhotoObjects', JSON.stringify(photos));
-            localStorage.setItem('ecoDexAvatar', playerAvatar);
-            localStorage.setItem('ecoDexManualUsed', manualPositionUsed);
-            localStorage.setItem('ecoDexPlayerName', playerName);
-        }
-        function updateScoreUI() { document.getElementById('scoreVal').innerText = score; }
-        function updateProfileUI() {
-            document.getElementById('totalScoreVal').innerText = score;
-            document.getElementById('photoCountVal').innerText = photos.length;
-        }
-        
-        function renderShop() {
-            const g = document.getElementById('shopList'); g.innerHTML = "";
-            shopItems.forEach(i => {
-                const owned = inventory.includes(i.id);
-                g.innerHTML += `<div class="shop-item"><div style="font-size:35px">${i.icon}</div><b>${i.name}</b><br><span style="color:#2ecc71">${i.cost} p</span><br><button class="buy-btn ${owned?'owned':''}" onclick="buyItem(${i.id},${i.cost})">${owned?'EID':'KJØP'}</button></div>`;
-            });
-        }
-        function buyItem(id, cost) {
-            if(inventory.includes(id)) return;
-            if(score >= cost) { score -= cost; inventory.push(id); saveData(); updateScoreUI(); renderShop(); robotTalk("Kjøpt!"); } 
-            else robotTalk("Mangler poeng!");
-        }
         function robotTalk(msg) {
-            const b = document.getElementById('robotMsg'); b.innerText = msg; b.style.display = 'block';
-            setTimeout(() => b.style.display = 'none', 4000);
+            const b = document.getElementById('robotMsg');
+            b.innerText = msg;
+            b.style.display = 'block';
+            setTimeout(() => b.style.display = 'none', 5000);
         }
-        
+
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            if(id !== 'map') document.getElementById(id+'Page').classList.add('active');
             
-            if (id === 'map') document.getElementById('btnMap').classList.add('active');
-            else if (id === 'shop') document.getElementById('btnShop').classList.add('active');
-            else if (id === 'profile') { document.getElementById('btnProfile').classList.add('active'); updateProfileUI(); }
-            else if (id === 'leaderboard') { document.getElementById('btnLeaderboard').classList.add('active'); renderLeaderboard(); }
+            if(id === 'map') document.getElementById('btnMap').classList.add('active');
+            if(id === 'social') document.getElementById('btnSocial').classList.add('active');
+            if(id === 'shop') document.getElementById('btnShop').classList.add('active');
+            if(id === 'profile') document.getElementById('btnProfile').classList.add('active');
             
-            if (id !== 'map') document.getElementById(id + 'Page').classList.add('active');
+            if(id === 'social') switchSocialTab('friends'); 
         }
     </script>
 </body>
