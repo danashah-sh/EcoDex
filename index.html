@@ -19,6 +19,7 @@
             --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             --chat-me: #2ecc71;
             --chat-them: #e5e5ea;
+            --shop-gold: #f1c40f;
         }
 
         * {
@@ -185,15 +186,28 @@
         }
 
         @keyframes bounceMarker {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
+        }
 
-            0%,
-            100% {
-                transform: translateY(0);
-            }
+        /* FOTO MARKØR */
+        .photo-marker-icon {
+            width: 30px;
+            height: 30px;
+            background: #f1c40f;
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
 
-            50% {
-                transform: translateY(-5px);
-            }
+        @keyframes popIn {
+            0% { transform: scale(0); }
+            100% { transform: scale(1); }
         }
 
         /* ANDRE SPILLERE */
@@ -224,29 +238,8 @@
         }
 
         @keyframes float {
-
-            0%,
-            100% {
-                transform: translateY(0);
-            }
-
-            50% {
-                transform: translateY(-5px);
-            }
-        }
-
-        /* FOTO MARKØR */
-        .photo-marker-icon {
-            width: 30px;
-            height: 30px;
-            background: #f1c40f;
-            border: 3px solid white;
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 16px;
-            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3);
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-5px); }
         }
 
         /* HUD */
@@ -415,7 +408,7 @@
             max-width: 80%;
         }
 
-        /* CHAT OVERLAY */
+        /* CHAT */
         #chatOverlay {
             position: fixed;
             top: 0;
@@ -595,11 +588,56 @@
             color: #333;
         }
 
+        .item-desc {
+            font-size: 11px;
+            color: #777;
+            margin: 5px 0 10px;
+            line-height: 1.2;
+        }
+
         .item-cost {
             font-size: 12px;
             color: var(--primary);
             font-weight: bold;
             margin-top: 5px;
+        }
+
+        /* NY STIL FOR BUTIKK KNAPPER */
+        .shop-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .shop-btn.owned {
+            background: #2c3e50;
+            color: #fff;
+            cursor: default;
+        }
+
+        .shop-btn.disabled {
+            background: #bdc3c7;
+            color: #fff;
+            cursor: not-allowed;
+        }
+
+        .shop-balance-card {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            color: white;
+            margin: 20px 20px 10px;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(241, 196, 15, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
         /* SOSIALT */
@@ -771,21 +809,6 @@
             z-index: 30;
         }
 
-        .edit-name-btn {
-            margin-left: 8px;
-            background: transparent;
-            border: none;
-            color: white;
-            font-size: 18px;
-            cursor: pointer;
-            opacity: 0.8;
-            transition: opacity 0.2s;
-        }
-
-        .edit-name-btn:hover {
-            opacity: 1;
-        }
-
         .settings-btn {
             margin-top: 10px;
             background: rgba(255, 255, 255, 0.2);
@@ -799,6 +822,7 @@
 
         .profile-name-container {
             display: flex;
+            flex-direction: column;
             align-items: center;
             justify-content: center;
         }
@@ -1013,14 +1037,14 @@
     <div class="top-hud">
         <div class="hud-bg">
             <div style="font-weight:900; color:var(--primary);">ECODEX</div>
-            <div class="score-badge">⭐ <span id="scoreVal">0</span></div>
+            <div class="score-badge">⭐ <span id="scoreVal">0</span> XP</div>
         </div>
         <div id="debugStatus">Søker posisjon...</div>
     </div>
 
     <div class="robot-wrapper" onclick="showRobotTip()">
         <div class="robot-bubble" id="robotMsg">Trykk på meg for tips!</div>
-        <img src="robot.png" class="robot-body" alt="Bot"
+        <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" class="robot-body" alt="Bot"
             onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712109.png'">
     </div>
 
@@ -1079,7 +1103,15 @@
     </div>
 
     <div id="shopPage" class="page">
-        <h2 class="section-title">Butikk</h2>
+        <div class="shop-balance-card">
+            <div>
+                <div style="font-size:12px; opacity:0.9;">DIN SALDO</div>
+                <div style="font-size:24px; font-weight:900;" id="shopBalanceDisplay">0 XP</div>
+            </div>
+            <div style="font-size:30px;">💰</div>
+        </div>
+
+        <h2 class="section-title">Utstyr</h2>
         <div id="shopList" class="grid-container"></div>
     </div>
 
@@ -1120,6 +1152,7 @@
 
             <div class="profile-name-container">
                 <div class="profile-name" id="profileNameDisplay" style="font-weight:800; font-size:24px;">Gjest</div>
+                <div style="font-size:12px; opacity:0.8; margin-top:5px;">Nivå: <span id="profileLevelDisplay">1</span></div>
             </div>
 
             <button class="settings-btn" onclick="openSettings()">⚙️ Innstillinger</button>
@@ -1194,13 +1227,14 @@
 
         const avatars = ["👤", "👩", "👨", "🧝", "🧚", "🧙", "🧛", "🧟", "🧜", "🦊", "🐻", "🤖"];
 
+        // OPPDATERT UTSTYRS-LISTE MED BESKRIVELSER
         const items = [
-            { id: 1, name: "Kompass", cost: 50, icon: "🧭" },
-            { id: 2, name: "Lommelykt", cost: 100, icon: "🔦" },
-            { id: 3, name: "Caps", cost: 150, icon: "🧢" },
-            { id: 4, name: "Sekk", cost: 300, icon: "🎒" },
-            { id: 5, name: "Kikkert", cost: 400, icon: "🔭" },
-            { id: 6, name: "Kano", cost: 1000, icon: "🛶" }
+            { id: 1, name: "Kompass", cost: 50, icon: "🧭", desc: "Finn veien hjem." },
+            { id: 2, name: "Lommelykt", cost: 100, icon: "🔦", desc: "Se bedre i mørket." },
+            { id: 3, name: "Caps", cost: 150, icon: "🧢", desc: "Beskytt deg mot solen." },
+            { id: 4, name: "Sekk", cost: 300, icon: "🎒", desc: "Bær mer utstyr." },
+            { id: 5, name: "Kikkert", cost: 400, icon: "🔭", desc: "Se dyr på lang avstand." },
+            { id: 6, name: "Kano", cost: 1000, icon: "🛶", desc: "Utforsk vannet." }
         ];
 
         // START DATABASE MED FALSKE BRUKERE
@@ -1334,7 +1368,6 @@
                     if (playerMarker) playerMarker.setLatLng(latlng);
                     else updatePlayerMarker();
 
-                    map.flyTo(latlng, map.getZoom(), { animate: true, duration: 1 });
                     document.getElementById('debugStatus').innerText = "GPS Aktiv ✅";
 
                     generateFakeUsersMap();
@@ -1359,18 +1392,35 @@
         }
 
         function renderMapPhotos() {
-            if (!photoLayer) return;
+            if (!photoLayer || !map) return;
+            
             photoLayer.clearLayers();
+
             if (state.photos && state.photos.length > 0) {
                 state.photos.forEach(p => {
                     if (p.lat && p.lng) {
+                        
                         const icon = L.divIcon({
                             className: 'photo-marker-icon',
                             html: '📷',
-                            iconSize: [30, 30]
+                            iconSize: [30, 30],
+                            iconAnchor: [15, 15],
+                            popupAnchor: [0, -15]
                         });
+
                         const marker = L.marker([p.lat, p.lng], { icon: icon });
-                        marker.bindPopup(`<img src="${p.src}" style="width:100px; border-radius:10px;"><br><b>${p.label}</b>`);
+                        
+                        const popupContent = `
+                            <div style="text-align:center;">
+                                <img src="${p.src}" style="width:120px; height:80px; object-fit:cover; border-radius:8px; border:2px solid #27ae60;">
+                                <br>
+                                <b style="color:#333;">${p.label}</b>
+                                <br>
+                                <span style="color:#27ae60; font-weight:bold;">+${p.points} poeng</span>
+                            </div>
+                        `;
+                        
+                        marker.bindPopup(popupContent);
                         photoLayer.addLayer(marker);
                     }
                 });
@@ -1435,7 +1485,7 @@
             const html = getPlayerIconHTML();
             const icon = L.divIcon({ className: 'player-map-icon', html: html, iconSize: [50, 50] });
             if (playerMarker) playerMarker.setIcon(icon);
-            else playerMarker = L.marker([currentLat, currentLng], { icon: icon }).addTo(map);
+            else playerMarker = L.marker([currentLat || 59.91, currentLng || 10.75], { icon: icon }).addTo(map);
         }
 
         /* --- KAMERA & LAGRING --- */
@@ -1522,30 +1572,42 @@
             const label = document.getElementById('saveBtn').dataset.label;
             state.score += pts;
 
+            let photoLat = currentLat;
+            let photoLng = currentLng;
+            if (photoLat === 0 && photoLng === 0) {
+                photoLat = 59.91;
+                photoLng = 10.75;
+                console.log("Ingen GPS, bruker test-lokasjon");
+            }
+
             if (!Array.isArray(state.photos)) state.photos = [];
 
             state.photos.push({
                 src: document.getElementById('capturedPhoto').src,
                 label: label,
                 points: pts,
-                lat: currentLat,
-                lng: currentLng
+                lat: photoLat,
+                lng: photoLng
             });
 
             try {
-                // saveState() now uses state.email (or username if older state) as key for the user
                 let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
-                // Use email if available, otherwise fallback to username
                 const userKey = state.email || state.username;
                 allUsers[userKey] = state;
                 localStorage.setItem('ecoDexUsers', JSON.stringify(allUsers));
 
-                renderGallery();
-                updateUI();
-                renderMapPhotos();
-                robotTalk(`Bra jobba! Du fikk ${pts} poeng.`);
                 closeCamera();
                 showPage('map');
+                
+                setTimeout(() => {
+                    map.invalidateSize();
+                    renderMapPhotos();
+                    renderGallery();
+                    updateUI();
+                    map.flyTo([photoLat, photoLng], 18, { animate: true, duration: 1.5 });
+                    robotTalk(`Bilde lagret! +${pts} XP`);
+                }, 100);
+
             } catch (e) {
                 alert("Lagring fullt! Du må slette noen bilder.");
             }
@@ -1629,7 +1691,7 @@
             input.value = "";
             input.focus();
             renderMessages();
-            // Use same saving logic as elsewhere
+            
             try {
                 let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
                 const userKey = state.email || state.username;
@@ -1662,16 +1724,36 @@
             }, 1000);
         }
 
+        // --- FORBEDRET BUTIKK LOGIKK ---
         function renderShop() {
             const div = document.getElementById('shopList');
+            const balanceDisplay = document.getElementById('shopBalanceDisplay');
+            
             div.innerHTML = "";
+            balanceDisplay.innerText = state.score + " XP";
+
             items.forEach(item => {
                 const owned = state.inventory.includes(item.id);
+                const affordable = state.score >= item.cost;
+                
+                let btnClass = "shop-btn";
+                let btnText = `KJØP (${item.cost})`;
+                let onclickAction = `buyItem(${item.id}, ${item.cost})`;
+
+                if (owned) {
+                    btnClass += " owned";
+                    btnText = "EIER ALLEREDE";
+                    onclickAction = "";
+                } else if (!affordable) {
+                    btnClass += " disabled";
+                }
+
                 div.innerHTML += `
-                <div class="item-card" onclick="buyItem(${item.id}, ${item.cost})">
+                <div class="item-card" onclick="${affordable && !owned ? onclickAction : ''}">
                     <div class="item-icon">${item.icon}</div>
                     <div class="item-name">${item.name}</div>
-                    <div class="item-cost" style="color:${owned ? '#ccc' : ''}">${owned ? 'Eier' : item.cost + ' p'}</div>
+                    <div class="item-desc">${item.desc}</div>
+                    <button class="${btnClass}">${btnText}</button>
                 </div>`;
             });
         }
@@ -1692,6 +1774,7 @@
                 renderInventory();
                 robotTalk("Kjøpt! Sjekk ryggsekken din.");
             } else {
+                // Skal ikke skje pga disabled knapp, men greit å ha
                 robotTalk("Du har ikke nok poeng!");
             }
         }
@@ -1789,6 +1872,10 @@
         function updateUI() {
             document.getElementById('scoreVal').innerText = state.score;
             document.getElementById('profileNameDisplay').innerText = state.username;
+            
+            // Enkel nivå beregning: 100 poeng per nivå
+            const level = Math.floor((state.score + (state.inventory.length * 50)) / 100) + 1;
+            document.getElementById('profileLevelDisplay').innerText = level;
 
             const avatarContainer = document.getElementById('profileAvatarDisplay');
             if (state.avatar.startsWith('data:image')) {
@@ -1835,37 +1922,39 @@
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
             if (id !== 'map') document.getElementById(id + 'Page').classList.add('active');
 
-            if (id === 'map') document.getElementById('btnMap').classList.add('active');
+            if (id === 'map') {
+                document.getElementById('btnMap').classList.add('active');
+                setTimeout(() => map.invalidateSize(), 100);
+            }
             if (id === 'social') document.getElementById('btnSocial').classList.add('active');
-            if (id === 'shop') document.getElementById('btnShop').classList.add('active');
+            if (id === 'shop') {
+                document.getElementById('btnShop').classList.add('active');
+                renderShop(); // Oppdater butikken hver gang vi åpner den for å vise riktig saldo
+            }
             if (id === 'profile') document.getElementById('btnProfile').classList.add('active');
 
             if (id === 'social') switchSocialTab('friends');
         }
 
         function searchFriends() {
-            const query = document.getElementById('searchFriendInput').value.trim(); // Trim whitespace
+            const query = document.getElementById('searchFriendInput').value.trim();
             if (!query) {
-                // Show all non-friends if search is empty
                 const nonFriends = fakeUsers.filter(u => !state.friends.includes(u.name));
                 renderAddFriends(nonFriends);
                 return;
             }
-
             const lowerQuery = query.toLowerCase();
             const results = fakeUsers.filter(u => u.name.toLowerCase().includes(lowerQuery));
-
-            renderAddFriends(results, query); // Pass query to render custom option
+            renderAddFriends(results, query);
         }
 
         function renderAddFriends(listToRender, query = "") {
             const list = document.getElementById('addFriendList');
             list.innerHTML = "";
 
-            // 1. Vis resultater fra databasen
             listToRender.forEach(u => {
                 const isFriend = state.friends.includes(u.name);
-                if (!isFriend) { // Vis bare de som ikke er venner her
+                if (!isFriend) {
                     list.innerHTML += `
                     <div class="item-card" onclick="addFriend('${u.name}')">
                         <div class="item-icon">${u.avatar}</div>
@@ -1875,7 +1964,6 @@
                 }
             });
 
-            // 2. Hvis ingen funnet (og vi har et søk), tilby å legge til som ny person
             if (listToRender.length === 0 && query) {
                 list.innerHTML = `
                 <div class="item-card" onclick="addCustomFriend('${query}')">
@@ -1889,32 +1977,23 @@
         }
 
         function addCustomFriend(name) {
-            // Capitalize first letter
             name = name.charAt(0).toUpperCase() + name.slice(1);
-
-            // Generate random avatar
             const randomAvatars = ["🦸", "🦹", "🧙‍♂️", "🧛‍♀️", "🧞", "🧜‍♂️", "👽", "👾"];
             const rAvatar = randomAvatars[Math.floor(Math.random() * randomAvatars.length)];
 
-            // Add to fakeUsers database so chat works
             fakeUsers.push({ name: name, score: 0, avatar: rAvatar });
-
             addFriend(name);
-
-            // Clear search
             document.getElementById('searchFriendInput').value = "";
-            switchSocialTab('friends'); // Switch back to friends list
+            switchSocialTab('friends');
         }
 
         function addFriend(name) {
             if (!state.friends.includes(name)) {
                 state.friends.push(name);
-
                 let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
                 const userKey = state.email || state.username;
                 allUsers[userKey] = state;
                 localStorage.setItem('ecoDexUsers', JSON.stringify(allUsers));
-
                 searchFriends();
                 robotTalk(`${name} er nå din venn!`);
             }
@@ -1968,7 +2047,6 @@
             } else if (tab === 'add') {
                 document.getElementById('viewAdd').style.display = 'block';
                 document.getElementById('tabAdd').classList.add('active');
-                // Render popular/random initially
                 renderAddFriends(fakeUsers.slice(0, 4));
             } else {
                 document.getElementById('viewLeaderboard').style.display = 'block';
@@ -1977,14 +2055,11 @@
             }
         }
 
-        // --- NEW SETTINGS FUNCTIONALITY ---
-
         function openSettings() {
             document.getElementById('settingsOverlay').style.display = 'flex';
-            // Pre-fill current values
             document.getElementById('settingUsername').value = state.username || "";
             document.getElementById('settingEmail').value = state.email || "";
-            document.getElementById('settingPassword').value = ""; // Don't show password for security
+            document.getElementById('settingPassword').value = "";
         }
 
         function closeSettings() {
@@ -2001,34 +2076,26 @@
                 return;
             }
 
-            // Get current user key (old email)
             const oldKey = state.email.toLowerCase();
             let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
 
-            // Check if email is changing and if new email already exists
             if (newEmail.toLowerCase() !== oldKey && allUsers[newEmail.toLowerCase()]) {
                 alert("Denne e-postadressen er allerede i bruk.");
                 return;
             }
 
-            // Update state
             state.username = newUsername;
 
-            // Handle email change (requires moving data to new key)
             if (newEmail.toLowerCase() !== oldKey) {
                 state.email = newEmail;
-                // Delete old entry
                 delete allUsers[oldKey];
-                // Update active user pointer
                 localStorage.setItem('ecoDexLastUser', newEmail.toLowerCase());
             }
 
-            // Update password only if entered
             if (newPassword) {
                 state.password = newPassword;
             }
 
-            // Save updated state to new (or existing) key
             allUsers[state.email.toLowerCase()] = state;
             localStorage.setItem('ecoDexUsers', JSON.stringify(allUsers));
 
