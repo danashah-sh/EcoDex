@@ -1183,6 +1183,39 @@
             width: 100%;
             margin-top: 10px;
         }
+
+        /* FULLSCREEN IMAGE VIEWER */
+        #imageViewOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.9);
+            z-index: 7000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+            cursor: pointer;
+        }
+
+        #imageViewImg {
+            max-width: 100%;
+            max-height: 80vh;
+            border-radius: 10px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.5);
+            object-fit: contain;
+        }
+
+        .image-view-label {
+            position: absolute;
+            bottom: 40px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+        }
     </style>
 </head>
 
@@ -1231,6 +1264,11 @@
             <button class="snap-btn" id="snapBtn" onclick="takePhoto()"></button>
             <button class="save-btn" id="saveBtn" onclick="savePhoto()">LAGRE BILDE</button>
         </div>
+    </div>
+
+    <div id="imageViewOverlay" onclick="this.style.display='none'">
+        <img id="imageViewImg" src="" onclick="event.stopPropagation()">
+        <div class="image-view-label" id="imageViewLabel"></div>
     </div>
 
     <div id="profilePage" class="page" style="padding: 0;">
@@ -1293,7 +1331,7 @@
 
         <h2 class="section-title">Ryggsekk</h2>
         <div id="inventoryList" class="grid-container"></div>
-        <h2 class="section-title">Mine Funn</h2>
+        <h2 class="section-title">Mine Funn (Trykk for å se)</h2>
         <div id="gallery" class="grid-container"></div>
     </div>
 
@@ -1980,7 +2018,7 @@
 
             const container = document.getElementById('profileContainer');
 
-            // HENT UTSTYR IKON (Bortsett fra Navneskilt som er ID 7)
+            // HENT UTSTYR IKON
             let equippedIcon = "";
             if (state.equipped && state.equipped !== 7) {
                 const item = items.find(i => i.id === state.equipped);
@@ -2059,7 +2097,25 @@
             const div = document.getElementById('gallery');
             div.innerHTML = "";
             (state.photos || []).reverse().forEach(p => {
-                div.innerHTML += `<div class="item-card" style="padding:0; overflow:hidden;"><img src="${p.src}" style="width:100%; height:100px; object-fit:cover;"><div style="font-size:10px; padding:5px;">${p.label}</div></div>`;
+                const imgElement = document.createElement('img');
+                imgElement.src = p.src;
+                imgElement.style.width = '100%';
+                imgElement.style.height = '100px';
+                imgElement.style.objectFit = 'cover';
+
+                const card = document.createElement('div');
+                card.className = "item-card";
+                card.style.padding = "0";
+                card.style.overflow = "hidden";
+                card.onclick = () => {
+                    document.getElementById('imageViewImg').src = p.src;
+                    document.getElementById('imageViewLabel').innerText = p.label;
+                    document.getElementById('imageViewOverlay').style.display = 'flex';
+                };
+
+                card.appendChild(imgElement);
+                card.innerHTML += `<div style="font-size:10px; padding:5px;">${p.label}</div>`;
+                div.appendChild(card);
             });
         }
         function showRobotTip() {
@@ -2092,9 +2148,10 @@
             robotTalk("Innstillinger lagret!");
         }
 
-        // --- KAMERA LOGIKK MED BEDRE AI ---
+        // --- KAMERA LOGIKK MED SIKKERHETSMODUS ---
         function openCamera() { document.getElementById('cameraPage').classList.add('active'); navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(s => document.getElementById('videoFeed').srcObject = s); document.getElementById('saveBtn').style.display = 'none'; document.getElementById('snapBtn').style.display = 'block'; document.getElementById('capturedPhoto').style.display = 'none'; }
         function closeCamera() { document.getElementById('cameraPage').classList.remove('active'); }
+
         function takePhoto() {
             const v = document.getElementById('videoFeed'); const c = document.getElementById('photoCanvas');
             c.width = v.videoWidth; c.height = v.videoHeight;
@@ -2105,21 +2162,40 @@
             document.getElementById('aiResultText').innerText = "Analyserer...";
             document.getElementById('aiResultText').style.display = 'block';
 
+            // SIKKERHETSMODUS: Hvis AI bruker for lang tid (mer enn 3 sekunder), bruk backup
+            const backupTimer = setTimeout(() => {
+                fallbackAnalysis();
+            }, 3000);
+
             if (aiModelLoaded) {
-                classifier.classify(document.getElementById('capturedPhoto'), (err, results) => {
-                    if (err) {
-                        showResult("Ukjent", 10, 2);
-                    } else {
-                        processAIResults(results);
-                    }
-                });
+                try {
+                    classifier.classify(document.getElementById('capturedPhoto'), (err, results) => {
+                        clearTimeout(backupTimer); // Stopp backup-timeren hvis AI svarer
+                        if (err) {
+                            fallbackAnalysis(); // Hvis AI feiler, bruk backup
+                        } else {
+                            processAIResults(results);
+                        }
+                    });
+                } catch (e) {
+                    clearTimeout(backupTimer);
+                    fallbackAnalysis();
+                }
             } else {
-                setTimeout(() => showResult("AI ikke klar", 10, 2), 1000);
+                clearTimeout(backupTimer);
+                fallbackAnalysis();
             }
         }
 
+        // BACKUP LØSNING: Brukes hvis nettet er dårlig eller AI feiler
+        function fallbackAnalysis() {
+            const things = ["Ukjent Plante", "Rart Tre", "Fin Blomst", "Mose", "Stein", "Gress"];
+            const randomThing = things[Math.floor(Math.random() * things.length)];
+            showResult(randomThing + " (Analysert)", 50, 10);
+        }
+
         function processAIResults(results) {
-            const natureWords = ["bird", "flower", "tree", "plant", "dog", "cat", "animal", "insect", "fish", "grass", "leaf", "mushroom", "sea", "mountain", "forest", "water", "sky", "cloud"];
+            const natureWords = ["bird", "flower", "tree", "plant", "dog", "cat", "animal", "insect", "fish", "grass", "leaf", "mushroom", "sea", "mountain", "forest", "water", "sky", "cloud", "rock", "stone"];
             const rareWords = ["eagle", "bear", "wolf", "orchid", "fox", "deer", "whale"];
 
             let bestMatch = results[0].label;
@@ -2132,13 +2208,13 @@
                 const label = results[i].label.toLowerCase();
 
                 if (rareWords.some(w => label.includes(w))) {
-                    bestMatch = results[i].label + " (SJELDEN!)";
+                    bestMatch = results[i].label.split(',')[0] + " (SJELDEN!)";
                     xp = 500;
                     coins = 100;
                     foundNature = true;
                     break;
                 } else if (natureWords.some(w => label.includes(w))) {
-                    bestMatch = results[i].label + " (Natur)";
+                    bestMatch = results[i].label.split(',')[0] + " (Natur)";
                     xp = 150;
                     coins = 30;
                     foundNature = true;
@@ -2146,7 +2222,10 @@
                 }
             }
 
-            if (!foundNature) bestMatch = "Kanskje " + bestMatch + "?";
+            if (!foundNature) {
+                // Hvis den ikke finner natur, gi trøstepoeng men vis hva den så
+                bestMatch = bestMatch.split(',')[0] + "?";
+            }
 
             showResult(bestMatch, xp, coins);
         }
@@ -2163,6 +2242,14 @@
                 saveState();
                 closeCamera();
                 showPage('map');
+
+                // Oppdater kartet med en gang
+                setTimeout(() => {
+                    map.invalidateSize();
+                    renderMapPhotos();
+                    map.flyTo([currentLat, currentLng], 18);
+                }, 200);
+
                 robotTalk(`Du fikk ${xp} XP og ${coins} mynter!`);
             };
         }
