@@ -5,12 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport"
         content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>EcoDex Ultimate</title>
+    <title>EcoDex Ultimate AI</title>
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/ml5@0.12.2/dist/ml5.min.js"></script>
-    
+
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
 
     <style>
@@ -25,116 +25,705 @@
             --xp-purple: #8e44ad;
         }
 
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; user-select: none; }
-        body { margin: 0; background: var(--bg-color); font-family: var(--font); overflow: hidden; height: 100vh; height: 100dvh; }
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+
+        body {
+            margin: 0;
+            background: var(--bg-color);
+            font-family: var(--font);
+            overflow: hidden;
+            height: 100vh;
+            height: 100dvh;
+        }
 
         /* --- GENERELT UI --- */
-        .page { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #f0f2f5; z-index: 4000; display: none; flex-direction: column; overflow-y: auto; padding-bottom: 110px; }
-        .page.active { display: flex; }
-        .section-title { margin: 20px 20px 10px; font-size: 16px; color: #333; font-weight: 800; }
-        .grid-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; padding: 0 20px; }
-        
+        .page {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #f0f2f5;
+            z-index: 4000;
+            display: none;
+            flex-direction: column;
+            overflow-y: auto;
+            padding-bottom: 110px;
+        }
+
+        .page.active {
+            display: flex;
+        }
+
+        .section-title {
+            margin: 20px 20px 10px;
+            font-size: 16px;
+            color: #333;
+            font-weight: 800;
+        }
+
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 15px;
+            padding: 0 20px;
+        }
+
         /* LOGIN */
-        #loginScreen { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: radial-gradient(circle, #2ecc71, #27ae60); z-index: 100000; display: flex; flex-direction: column; justify-content: center; align-items: center; padding: 30px; color: white; transition: opacity 0.5s; }
-        .login-box { background: white; padding: 30px; border-radius: 20px; width: 100%; max-width: 350px; text-align: center; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2); }
-        .login-input { width: 100%; padding: 15px; margin: 10px 0; border: 2px solid #eee; border-radius: 10px; font-size: 16px; outline: none; text-align: center; background: #f9f9f9; color: black; }
-        .login-btn { background: var(--primary); color: white; width: 100%; padding: 15px; border: none; border-radius: 10px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 10px; }
-        .signup-btn { background: transparent; color: var(--primary); border: 2px solid var(--primary); width: 100%; padding: 12px; border-radius: 10px; font-size: 16px; font-weight: bold; margin-top: 10px; cursor: pointer; }
-        #loginError { color: #e74c3c; font-size: 14px; margin-top: 15px; font-weight: bold; min-height: 20px; }
+        #loginScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: radial-gradient(circle, #2ecc71, #27ae60);
+            z-index: 100000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 30px;
+            color: white;
+            transition: opacity 0.5s;
+        }
+
+        .login-box {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            width: 100%;
+            max-width: 350px;
+            text-align: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+        }
+
+        .login-input {
+            width: 100%;
+            padding: 15px;
+            margin: 10px 0;
+            border: 2px solid #eee;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+            text-align: center;
+            background: #f9f9f9;
+            color: black;
+        }
+
+        .login-btn {
+            background: var(--primary);
+            color: white;
+            width: 100%;
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .signup-btn {
+            background: transparent;
+            color: var(--primary);
+            border: 2px solid var(--primary);
+            width: 100%;
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
+        #loginError {
+            color: #e74c3c;
+            font-size: 14px;
+            margin-top: 15px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+
+        /* LOADING */
+        #aiLoading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 9000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #ccc;
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
 
         /* KART */
-        #map { position: absolute; top: 0; bottom: 0; left: 0; right: 0; z-index: 1; }
-        
+        #map {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1;
+        }
+
         /* 3D MARKØR STIL */
-        .player-map-3d { width: 100px; height: 100px; pointer-events: auto; position: relative; }
-        .player-map-3d model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
+        .player-map-3d {
+            width: 100px;
+            height: 100px;
+            pointer-events: auto;
+            position: relative;
+        }
+
+        .player-map-3d model-viewer {
+            width: 100%;
+            height: 100%;
+            --poster-color: transparent;
+        }
 
         /* 2D MARKØR STIL */
-        .player-map-icon { text-align: center; line-height: 1; font-size: 40px; filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.4)); }
-        .player-map-img { width: 50px; height: 50px; border-radius: 50%; object-fit: cover; border: 3px solid white; box-shadow: 0 2px 5px rgba(0,0,0,0.3); }
-        .marker-anim { animation: bounceMarker 2s infinite; }
-        @keyframes bounceMarker { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .player-map-icon {
+            text-align: center;
+            line-height: 1;
+            font-size: 40px;
+            filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.4));
+        }
 
-        /* UTSTYR PÅ KARTET & PROFIL */
+        .player-map-img {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            object-fit: cover;
+            border: 3px solid white;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+        }
+
+        .marker-anim {
+            animation: bounceMarker 2s infinite;
+        }
+
+        @keyframes bounceMarker {
+
+            0%,
+            100% {
+                transform: translateY(0);
+            }
+
+            50% {
+                transform: translateY(-5px);
+            }
+        }
+
+        /* UTSTYR IKON */
         .equipped-icon-overlay {
             position: absolute;
             bottom: 0;
             right: 0;
             font-size: 25px;
-            filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.5));
             z-index: 20;
-            background: rgba(255,255,255,0.8);
+            background: rgba(255, 255, 255, 0.8);
             border-radius: 50%;
             width: 35px;
             height: 35px;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
         }
 
         /* FOTO MARKØR */
-        .photo-marker-icon { width: 30px; height: 30px; background: #f1c40f; border: 3px solid white; border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 16px; box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4); animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-        @keyframes popIn { 0% { transform: scale(0); } 100% { transform: scale(1); } }
+        .photo-marker-icon {
+            width: 30px;
+            height: 30px;
+            background: #f1c40f;
+            border: 3px solid white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .global-photo-icon {
+            width: 25px;
+            height: 25px;
+            background: #3498db;
+            border: 2px solid white;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 12px;
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.4);
+            animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            color: white;
+        }
+
+        @keyframes popIn {
+            0% {
+                transform: scale(0);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
 
         /* ANDRE SPILLERE */
-        .custom-div-icon { background: transparent; border: none; }
-        .other-player-icon { font-size: 30px; text-align: center; animation: float 3s infinite ease-in-out; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3)); }
-        .other-player-label { background: rgba(255, 255, 255, 0.8); padding: 2px 5px; border-radius: 5px; font-size: 10px; font-weight: bold; position: absolute; top: -15px; left: 50%; transform: translateX(-50%); white-space: nowrap; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
-        @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+        .custom-div-icon {
+            background: transparent;
+            border: none;
+        }
+
+        .other-player-icon {
+            font-size: 30px;
+            text-align: center;
+            animation: float 3s infinite ease-in-out;
+            filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.3));
+        }
+
+        .other-player-label {
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2px 5px;
+            border-radius: 5px;
+            font-size: 10px;
+            font-weight: bold;
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            white-space: nowrap;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
 
         /* HUD */
-        .top-hud { position: absolute; top: 0; left: 0; right: 0; padding: 15px 20px; padding-top: max(15px, env(safe-area-inset-top)); z-index: 1000; display: flex; flex-direction: column; align-items: center; pointer-events: none; }
-        .hud-bg { background: rgba(255, 255, 255, 0.95); padding: 8px 20px; border-radius: 30px; display: flex; gap: 20px; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1); }
-        .score-badge { font-weight: bold; color: #333; }
-        #debugStatus { font-size: 10px; color: #555; background: rgba(255, 255, 255, 0.8); padding: 2px 8px; border-radius: 10px; margin-top: 5px; }
+        .top-hud {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            padding: 15px 20px;
+            padding-top: max(15px, env(safe-area-inset-top));
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            pointer-events: none;
+        }
 
-        /* ROBOT GUIDE */
-        .robot-wrapper { position: fixed; bottom: 120px; right: 20px; z-index: 2000; display: flex; flex-direction: column; align-items: flex-end; pointer-events: none; }
-        .robot-bubble { background: white; padding: 10px 15px; border-radius: 15px 15px 0 15px; font-size: 13px; margin-bottom: 5px; box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1); max-width: 180px; text-align: right; display: none; font-weight: bold; color: #333; }
-        .robot-body { width: 60px; filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.3)); animation: float 3s infinite ease-in-out; cursor: pointer; pointer-events: auto; }
+        .hud-bg {
+            background: rgba(255, 255, 255, 0.95);
+            padding: 8px 20px;
+            border-radius: 30px;
+            display: flex;
+            gap: 20px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .score-badge {
+            font-weight: bold;
+            color: #333;
+        }
+
+        #debugStatus {
+            font-size: 10px;
+            color: #555;
+            background: rgba(255, 255, 255, 0.8);
+            padding: 2px 8px;
+            border-radius: 10px;
+            margin-top: 5px;
+        }
+
+        /* ROBOT */
+        .robot-wrapper {
+            position: fixed;
+            bottom: 120px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            pointer-events: none;
+        }
+
+        .robot-bubble {
+            background: white;
+            padding: 10px 15px;
+            border-radius: 15px 15px 0 15px;
+            font-size: 13px;
+            margin-bottom: 5px;
+            box-shadow: 0 3px 10px rgba(0, 0, 0, 0.1);
+            max-width: 180px;
+            text-align: right;
+            display: none;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .robot-body {
+            width: 60px;
+            filter: drop-shadow(0 5px 5px rgba(0, 0, 0, 0.3));
+            animation: float 3s infinite ease-in-out;
+            cursor: pointer;
+            pointer-events: auto;
+        }
 
         /* KAMERA */
-        #cameraPage { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: black; z-index: 6000; display: none; }
-        #cameraPage.active { display: block; }
-        #videoFeed { width: 100%; height: 100%; object-fit: cover; }
-        #photoCanvas { display: none; }
-        #capturedPhoto { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; display: none; z-index: 6001; }
-        .camera-ui { position: absolute; bottom: 50px; width: 100%; display: flex; flex-direction: column; align-items: center; gap: 20px; z-index: 6005; padding-bottom: env(safe-area-inset-bottom); }
-        .snap-btn { width: 80px; height: 80px; background: white; border-radius: 50%; border: 6px solid #ddd; cursor: pointer; }
-        .save-btn { background: var(--primary); color: white; padding: 15px 40px; border-radius: 30px; border: none; font-size: 18px; font-weight: bold; display: none; cursor: pointer; box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3); }
-        .close-cam { position: absolute; top: 20px; right: 20px; color: white; font-size: 35px; top: max(20px, env(safe-area-inset-top)); z-index: 7000; cursor: pointer; text-shadow: 0 0 5px black; }
-        #aiResultText { color: white; font-weight: bold; background: rgba(0, 0, 0, 0.6); padding: 10px 20px; border-radius: 20px; display: none; text-align: center; max-width: 80%; }
-        #aiLoading { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(255, 255, 255, 0.95); z-index: 9000; display: none; flex-direction: column; justify-content: center; align-items: center; }
+        #cameraPage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: black;
+            z-index: 6000;
+            display: none;
+        }
+
+        #cameraPage.active {
+            display: block;
+        }
+
+        #videoFeed {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        #photoCanvas {
+            display: none;
+        }
+
+        #capturedPhoto {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: none;
+            z-index: 6001;
+        }
+
+        .camera-ui {
+            position: absolute;
+            bottom: 50px;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+            z-index: 6005;
+            padding-bottom: env(safe-area-inset-bottom);
+        }
+
+        .snap-btn {
+            width: 80px;
+            height: 80px;
+            background: white;
+            border-radius: 50%;
+            border: 6px solid #ddd;
+            cursor: pointer;
+        }
+
+        .save-btn {
+            background: var(--primary);
+            color: white;
+            padding: 15px 40px;
+            border-radius: 30px;
+            border: none;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+
+        .close-cam {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            color: white;
+            font-size: 35px;
+            top: max(20px, env(safe-area-inset-top));
+            z-index: 7000;
+            cursor: pointer;
+            text-shadow: 0 0 5px black;
+        }
+
+        #aiResultText {
+            color: white;
+            font-weight: bold;
+            background: rgba(0, 0, 0, 0.6);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: none;
+            text-align: center;
+            max-width: 80%;
+        }
+
+        #aiLoading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(255, 255, 255, 0.95);
+            z-index: 9000;
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
 
         /* CHAT */
-        #chatOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 5000; display: none; flex-direction: column; }
-        .chat-header { padding: 15px; background: var(--primary); color: white; font-weight: bold; display: flex; align-items: center; gap: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1); padding-top: max(15px, env(safe-area-inset-top)); }
-        .chat-close { font-size: 30px; cursor: pointer; padding: 0 10px; line-height: 1; }
-        .chat-header-avatar { font-size: 24px; background: rgba(255, 255, 255, 0.2); width: 40px; height: 40px; border-radius: 50%; display: flex; justify-content: center; align-items: center; }
-        .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; background: #f0f2f5; }
-        .msg { max-width: 70%; padding: 10px 15px; border-radius: 20px; font-size: 14px; line-height: 1.4; position: relative; }
-        .msg.me { align-self: flex-end; background: var(--chat-me); color: white; border-bottom-right-radius: 5px; }
-        .msg.them { align-self: flex-start; background: var(--chat-them); color: black; border-bottom-left-radius: 5px; }
-        .typing-indicator { font-size: 10px; color: #777; margin-left: 10px; display: none; padding-bottom: 5px; }
-        .chat-input-form { padding: 10px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; padding-bottom: max(10px, env(safe-area-inset-bottom)); }
-        .chat-input { flex: 1; padding: 12px; border: 1px solid #ddd; border-radius: 25px; outline: none; font-size: 16px; }
-        .chat-send { background: var(--primary); color: white; border: none; width: 45px; height: 45px; border-radius: 50%; font-weight: bold; cursor: pointer; display: flex; justify-content: center; align-items: center; }
+        #chatOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: white;
+            z-index: 5000;
+            display: none;
+            flex-direction: column;
+        }
+
+        .chat-header {
+            padding: 15px;
+            background: var(--primary);
+            color: white;
+            font-weight: bold;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            padding-top: max(15px, env(safe-area-inset-top));
+        }
+
+        .chat-close {
+            font-size: 30px;
+            cursor: pointer;
+            padding: 0 10px;
+            line-height: 1;
+        }
+
+        .chat-header-avatar {
+            font-size: 24px;
+            background: rgba(255, 255, 255, 0.2);
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            background: #f0f2f5;
+        }
+
+        .msg {
+            max-width: 70%;
+            padding: 10px 15px;
+            border-radius: 20px;
+            font-size: 14px;
+            line-height: 1.4;
+            position: relative;
+        }
+
+        .msg.me {
+            align-self: flex-end;
+            background: var(--chat-me);
+            color: white;
+            border-bottom-right-radius: 5px;
+        }
+
+        .msg.them {
+            align-self: flex-start;
+            background: var(--chat-them);
+            color: black;
+            border-bottom-left-radius: 5px;
+        }
+
+        .typing-indicator {
+            font-size: 10px;
+            color: #777;
+            margin-left: 10px;
+            display: none;
+            padding-bottom: 5px;
+        }
+
+        .chat-input-form {
+            padding: 10px;
+            background: white;
+            border-top: 1px solid #ddd;
+            display: flex;
+            gap: 10px;
+            padding-bottom: max(10px, env(safe-area-inset-bottom));
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 25px;
+            outline: none;
+            font-size: 16px;
+        }
+
+        .chat-send {
+            background: var(--primary);
+            color: white;
+            border: none;
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            font-weight: bold;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
 
         /* PROFIL & AVATAR EDITOR */
-        .profile-header { background-color: var(--primary); padding: 40px 20px 20px; color: white; text-align: center; display: flex; flex-direction: column; align-items: center; }
-        .profile-avatar-container { width: 200px; height: 220px; position: relative; margin-bottom: 15px; }
-        .profile-avatar-3d { width: 100%; height: 100%; border-radius: 20px; overflow: hidden; background: rgba(255,255,255,0.2); border: 2px solid rgba(255,255,255,0.5); }
-        .profile-avatar-2d { font-size: 80px; background: #2c3e50; width: 140px; height: 140px; border-radius: 50%; display: flex; justify-content: center; align-items: center; border: 4px solid rgba(255, 255, 255, 0.3); overflow: hidden; color: white; margin: 20px auto 0; }
-        .custom-avatar-img { width: 100%; height: 100%; object-fit: cover; }
-        .edit-avatar-btn { position: absolute; bottom: 5px; right: 5px; background: white; color: var(--primary); border-radius: 50%; width: 40px; height: 40px; display: flex; justify-content: center; align-items: center; cursor: pointer; font-size: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.2); z-index: 30; }
-        .profile-name-container { color: white; margin-bottom: 20px; }
-        .profile-stats { display: flex; gap: 20px; justify-content: center; margin-top: 10px; }
-        .stat-box { background: rgba(0,0,0,0.2); padding: 5px 15px; border-radius: 10px; text-align: center; }
-        .stat-val { font-weight: 900; font-size: 18px; }
-        .stat-label { font-size: 10px; opacity: 0.8; }
+        .profile-header {
+            background-color: var(--primary);
+            padding: 40px 20px 20px;
+            color: white;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
 
-        /* NY STIL PÅ INNSTILLINGER KNAPPEN */
+        .profile-avatar-container {
+            width: 250px;
+            height: 250px;
+            position: relative;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .profile-avatar-3d {
+            width: 100%;
+            height: 100%;
+            border-radius: 20px;
+            overflow: hidden;
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .profile-avatar-2d {
+            font-size: 100px;
+            background: #2c3e50;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            overflow: hidden;
+            color: white;
+        }
+
+        .custom-avatar-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .edit-avatar-btn {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background: white;
+            color: var(--primary);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            z-index: 30;
+        }
+
+        .profile-name-container {
+            color: white;
+            margin-bottom: 20px;
+        }
+
+        .profile-stats {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .stat-box {
+            background: rgba(0, 0, 0, 0.2);
+            padding: 5px 15px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stat-val {
+            font-weight: 900;
+            font-size: 18px;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            opacity: 0.8;
+        }
+
+        /* GULL NAVN */
+        .gold-name {
+            background: linear-gradient(to right, #FFD700, #FDB931, #FFD700);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.3);
+            font-weight: 900 !important;
+        }
+
+        /* INNSTILLINGER & KNAPPER */
         .settings-btn {
             margin-top: 15px;
             background: rgba(255, 255, 255, 0.15);
@@ -158,68 +747,442 @@
             transform: scale(0.95);
             background: rgba(255, 255, 255, 0.3);
         }
-        
+
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+
         /* SELEKTOR I PROFIL */
-        #avatarSelector { display: none; flex-direction: column; background: white; padding: 20px; border-radius: 15px; margin-top: 10px; width: 95%; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); color: #333; }
-        #avatarSelector.show { display: flex; }
-        .mode-switch { display: flex; gap: 10px; margin-bottom: 15px; justify-content: center; }
-        .mode-btn { flex: 1; padding: 10px; border: 2px solid #ddd; background: white; border-radius: 10px; font-weight: bold; cursor: pointer; }
-        .mode-btn.active { border-color: var(--primary); background: #e8f8f5; color: var(--primary); }
-        .avatar-scroll { display: flex; gap: 10px; overflow-x: auto; padding: 10px 0; width: 100%; }
-        .avatar-choice { font-size: 30px; padding: 10px; background: #eee; border-radius: 50%; cursor: pointer; flex-shrink: 0; }
-        .avatar-choice.selected { background: #bcebc8; border: 2px solid var(--primary); }
-        .robot-grid { display: flex; gap: 10px; justify-content: center; margin-bottom: 15px; }
-        .robot-option { width: 60px; height: 60px; background: #eee; border-radius: 10px; cursor: pointer; border: 2px solid transparent; display: flex; justify-content: center; align-items: center; font-size: 30px; }
-        .robot-option.selected { border-color: var(--primary); background: #e8f8f5; }
-        .color-picker-wrapper { display: flex; align-items: center; gap: 10px; margin-top: 10px; background: #f9f9f9; padding: 10px; border-radius: 10px; }
-        input[type="color"] { border: none; width: 40px; height: 40px; cursor: pointer; background: none; }
-        
+        #avatarSelector {
+            display: none;
+            flex-direction: column;
+            background: white;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 10px;
+            width: 95%;
+            max-width: 400px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+            color: #333;
+        }
+
+        #avatarSelector.show {
+            display: flex;
+        }
+
+        .mode-switch {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            justify-content: center;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            border: 2px solid #ddd;
+            background: white;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .mode-btn.active {
+            border-color: var(--primary);
+            background: #e8f8f5;
+            color: var(--primary);
+        }
+
+        .avatar-scroll {
+            display: flex;
+            gap: 10px;
+            overflow-x: auto;
+            padding: 10px 0;
+            width: 100%;
+        }
+
+        .avatar-choice {
+            font-size: 30px;
+            padding: 10px;
+            background: #eee;
+            border-radius: 50%;
+            cursor: pointer;
+            flex-shrink: 0;
+        }
+
+        .avatar-choice.selected {
+            background: #bcebc8;
+            border: 2px solid var(--primary);
+        }
+
+        .robot-grid {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 15px;
+        }
+
+        .robot-option {
+            width: 60px;
+            height: 60px;
+            background: #eee;
+            border-radius: 10px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 30px;
+        }
+
+        .robot-option.selected {
+            border-color: var(--primary);
+            background: #e8f8f5;
+        }
+
+        .color-picker-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+            background: #f9f9f9;
+            padding: 10px;
+            border-radius: 10px;
+        }
+
+        input[type="color"] {
+            border: none;
+            width: 40px;
+            height: 40px;
+            cursor: pointer;
+            background: none;
+        }
+
+        /* SETTINGS BOX */
+        #settingsOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 6000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .settings-box {
+            background: white;
+            width: 100%;
+            max-width: 350px;
+            border-radius: 20px;
+            padding: 25px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        .settings-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .settings-input-group label {
+            display: block;
+            font-size: 12px;
+            font-weight: bold;
+            color: #555;
+            margin-bottom: 5px;
+        }
+
+        .settings-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+        }
+
+        .save-settings-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 10px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+
+        .toggle-group {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 5px;
+            padding: 5px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .toggle-label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #555;
+        }
+
         /* BUTIKK STILER */
-        .item-card { background: white; padding: 15px; border-radius: 15px; text-align: center; box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05); position: relative; }
-        .item-card.equipped { border: 3px solid var(--primary); background: #e8f8f5; }
-        .item-icon { font-size: 40px; margin-bottom: 5px; }
-        .item-name { font-size: 14px; font-weight: bold; color: #333; }
-        .item-desc { font-size: 11px; color: #777; margin: 5px 0 10px; line-height: 1.2; }
-        .item-cost { font-size: 12px; color: var(--primary); font-weight: bold; margin-top: 5px; }
-        .shop-btn { background: var(--primary); color: white; border: none; padding: 8px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; cursor: pointer; width: 100%; transition: 0.2s; }
-        .shop-btn.owned { background: #2c3e50; color: #fff; cursor: default; }
-        .shop-btn.disabled { background: #bdc3c7; color: #fff; cursor: not-allowed; }
-        .shop-balance-card { background: linear-gradient(135deg, #f1c40f, #f39c12); color: white; margin: 20px 20px 10px; padding: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(241, 196, 15, 0.3); display: flex; justify-content: space-between; align-items: center; }
+        .item-card {
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            position: relative;
+        }
 
-        /* SOSIALT */
-        .tab-bar { display: flex; justify-content: space-around; background: white; padding: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
-        .tab-btn { border: none; background: none; font-weight: bold; color: #999; font-size: 14px; padding: 10px; cursor: pointer; border-bottom: 3px solid transparent; }
-        .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-        .search-row { display: flex; gap: 10px; padding: 0 20px 20px; }
-        .search-input { flex: 1; padding: 12px; border-radius: 10px; border: 1px solid #ddd; font-size: 16px; outline: none; }
-        .search-btn { background: var(--primary); color: white; border: none; border-radius: 10px; padding: 0 20px; font-weight: bold; cursor: pointer; }
-        .lb-list { padding: 0 20px; }
-        .lb-item { display: flex; align-items: center; background: white; padding: 15px; border-radius: 12px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05); }
-        .lb-rank { width: 30px; font-weight: bold; color: #999; }
-        .lb-avatar { width: 40px; height: 40px; border-radius: 50%; background: #eee; margin-right: 15px; display: flex; justify-content: center; align-items: center; font-size: 22px; }
-        .lb-info { flex-grow: 1; }
-        .lb-name { font-weight: bold; color: #333; font-size: 14px; }
-        .lb-score { font-weight: bold; color: var(--xp-purple); }
-        .lb-item.me { border: 2px solid var(--primary); background: #f0fdf4; }
+        .item-card.equipped {
+            border: 3px solid var(--primary);
+            background: #e8f8f5;
+        }
 
-        /* SETTINGS OVERLAY */
-        #settingsOverlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 6000; display: none; justify-content: center; align-items: center; padding: 20px; }
-        .settings-box { background: white; width: 100%; max-width: 350px; border-radius: 20px; padding: 25px; display: flex; flex-direction: column; gap: 15px; }
-        .settings-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-        .settings-input-group label { display: block; font-size: 12px; font-weight: bold; color: #555; margin-bottom: 5px; }
-        .settings-input { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 14px; }
-        .save-settings-btn { background: var(--primary); color: white; border: none; padding: 12px; border-radius: 10px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .item-icon {
+            font-size: 40px;
+            margin-bottom: 5px;
+        }
 
-        /* KNAPPER */
-        .upload-btn { background: #3498db; color: white; border: none; padding: 10px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; width: 100%; margin-top:10px; }
-        .logout-btn { background: #e74c3c; color: white; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; margin-top: 10px; cursor: pointer; }
+        .item-name {
+            font-size: 14px;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .item-desc {
+            font-size: 11px;
+            color: #777;
+            margin: 5px 0 10px;
+            line-height: 1.2;
+        }
+
+        .item-cost {
+            font-size: 12px;
+            color: var(--primary);
+            font-weight: bold;
+            margin-top: 5px;
+        }
+
+        .shop-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            transition: 0.2s;
+        }
+
+        .shop-btn.owned {
+            background: #2c3e50;
+            color: #fff;
+            cursor: default;
+        }
+
+        .shop-btn.disabled {
+            background: #bdc3c7;
+            color: #fff;
+            cursor: not-allowed;
+        }
+
+        .shop-balance-card {
+            background: linear-gradient(135deg, #f1c40f, #f39c12);
+            color: white;
+            margin: 20px 20px 10px;
+            padding: 20px;
+            border-radius: 20px;
+            box-shadow: 0 5px 15px rgba(241, 196, 15, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .tab-bar {
+            display: flex;
+            justify-content: space-around;
+            background: white;
+            padding: 10px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .tab-btn {
+            border: none;
+            background: none;
+            font-weight: bold;
+            color: #999;
+            font-size: 14px;
+            padding: 10px;
+            cursor: pointer;
+            border-bottom: 3px solid transparent;
+        }
+
+        .tab-btn.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .search-row {
+            display: flex;
+            gap: 10px;
+            padding: 0 20px 20px;
+        }
+
+        .search-input {
+            flex: 1;
+            padding: 12px;
+            border-radius: 10px;
+            border: 1px solid #ddd;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .search-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            padding: 0 20px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .lb-list {
+            padding: 0 20px;
+        }
+
+        .lb-item {
+            display: flex;
+            align-items: center;
+            background: white;
+            padding: 15px;
+            border-radius: 12px;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .lb-rank {
+            width: 30px;
+            font-weight: bold;
+            color: #999;
+        }
+
+        .lb-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: #eee;
+            margin-right: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 22px;
+        }
+
+        .lb-info {
+            flex-grow: 1;
+        }
+
+        .lb-name {
+            font-weight: bold;
+            color: #333;
+            font-size: 14px;
+        }
+
+        .lb-score {
+            font-weight: bold;
+            color: var(--xp-purple);
+        }
+
+        .lb-item.me {
+            border: 2px solid var(--primary);
+            background: #f0fdf4;
+        }
 
         /* MENY */
-        .bottom-nav { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 92%; max-width: 400px; height: 65px; background: white; border-radius: 35px; display: flex; justify-content: space-around; align-items: center; z-index: 4500; box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15); padding: 0 10px; }
-        .nav-item { display: flex; flex-direction: column; align-items: center; color: #ccc; cursor: pointer; width: 50px; }
-        .nav-item.active { color: var(--primary); }
-        .nav-icon { width: 24px; height: 24px; fill: currentColor; }
-        .cam-btn-round { width: 65px; height: 65px; border-radius: 50%; background: var(--primary); border: 5px solid white; position: relative; top: -30px; display: flex; justify-content: center; align-items: center; box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1); cursor: pointer; }
+        .bottom-nav {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 92%;
+            max-width: 400px;
+            height: 65px;
+            background: white;
+            border-radius: 35px;
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            z-index: 4500;
+            box-shadow: 0 5px 25px rgba(0, 0, 0, 0.15);
+            padding: 0 10px;
+        }
+
+        .nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            color: #ccc;
+            cursor: pointer;
+            width: 50px;
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+        }
+
+        .nav-icon {
+            width: 24px;
+            height: 24px;
+            fill: currentColor;
+        }
+
+        .cam-btn-round {
+            width: 65px;
+            height: 65px;
+            border-radius: 50%;
+            background: var(--primary);
+            border: 5px solid white;
+            position: relative;
+            top: -30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 -5px 15px rgba(0, 0, 0, 0.1);
+            cursor: pointer;
+        }
+
+        .upload-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 10px;
+        }
     </style>
 </head>
 
@@ -254,7 +1217,8 @@
 
     <div class="robot-wrapper" onclick="showRobotTip()">
         <div class="robot-bubble" id="robotMsg">Trykk på meg for tips!</div>
-        <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" class="robot-body" alt="Bot" onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712109.png'">
+        <img src="https://cdn-icons-png.flaticon.com/512/4712/4712109.png" class="robot-body" alt="Bot"
+            onerror="this.src='https://cdn-icons-png.flaticon.com/512/4712/4712109.png'">
     </div>
 
     <div id="cameraPage">
@@ -279,8 +1243,14 @@
                 <div class="profile-name" id="profileNameDisplay" style="font-weight:800; font-size:24px;">Gjest</div>
                 <div style="font-size:14px; opacity:0.9;">Nivå <span id="profileLevelDisplay">0</span></div>
                 <div class="profile-stats">
-                    <div class="stat-box"><div class="stat-val" id="profileXPDisplay">0</div><div class="stat-label">XP</div></div>
-                    <div class="stat-box"><div class="stat-val" id="profileCoinsDisplay">0</div><div class="stat-label">MYNTER</div></div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="profileXPDisplay">0</div>
+                        <div class="stat-label">XP</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-val" id="profileCoinsDisplay">0</div>
+                        <div class="stat-label">MYNTER</div>
+                    </div>
                 </div>
             </div>
 
@@ -293,23 +1263,29 @@
                 <div id="panel2D" style="display:none;">
                     <p style="font-size:12px; color:#555; font-weight:bold;">Velg Emoji:</p>
                     <div class="avatar-scroll" id="emojiList"></div>
-                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📷 Last opp bilde</button>
-                    <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileUpload(this)">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📷 Last opp
+                        bilde</button>
+                    <input type="file" id="fileInput" accept="image/*" style="display: none;"
+                        onchange="handleFileUpload(this)">
                 </div>
 
                 <div id="panel3D" style="display:none;">
                     <p style="font-size:12px; color:#555; font-weight:bold;">Velg Robot-type:</p>
                     <div class="robot-grid" id="robotOptions"></div>
-                    
+
                     <div class="color-picker-wrapper">
                         <label style="font-size:14px; font-weight:bold;">Velg Farge:</label>
-                        <input type="color" id="robotColorPicker" value="#ff0000" oninput="updateRobotColor(this.value)">
+                        <input type="color" id="robotColorPicker" value="#ff0000"
+                            oninput="updateRobotColor(this.value)">
                     </div>
                 </div>
             </div>
 
             <button class="settings-btn" onclick="openSettings()">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
+                    <path
+                        d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.488.488 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L3.16 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z" />
+                </svg>
                 Innstillinger
             </button>
             <button class="logout-btn" onclick="logout()">Logg ut</button>
@@ -320,7 +1296,7 @@
         <h2 class="section-title">Mine Funn</h2>
         <div id="gallery" class="grid-container"></div>
     </div>
-    
+
     <div id="shopPage" class="page">
         <div class="shop-balance-card">
             <div>
@@ -377,6 +1353,22 @@
                 <h2 style="margin:0; font-size:20px;">Innstillinger</h2>
                 <div style="font-size:24px; cursor:pointer;" onclick="closeSettings()">✕</div>
             </div>
+
+            <div class="toggle-group">
+                <span class="toggle-label">Vis posisjon for andre</span>
+                <input type="checkbox" id="setPos">
+            </div>
+            <div class="toggle-group">
+                <span class="toggle-label">Vis mine bilder på kart</span>
+                <input type="checkbox" id="setMyPhotos">
+            </div>
+            <div class="toggle-group">
+                <span class="toggle-label">Vis globale bilder på kart</span>
+                <input type="checkbox" id="setGlobalPhotos">
+            </div>
+
+            <div style="height:1px; background:#eee; margin:10px 0;"></div>
+
             <div class="settings-input-group">
                 <label>Brukernavn</label>
                 <input type="text" id="settingUsername" class="settings-input">
@@ -387,7 +1379,8 @@
             </div>
             <div class="settings-input-group">
                 <label>Nytt Passord</label>
-                <input type="password" id="settingPassword" class="settings-input" placeholder="La stå tomt for å beholde">
+                <input type="password" id="settingPassword" class="settings-input"
+                    placeholder="La stå tomt for å beholde">
             </div>
             <button class="save-settings-btn" onclick="saveSettings()">Lagre Endringer</button>
         </div>
@@ -395,22 +1388,36 @@
 
     <div class="bottom-nav">
         <div class="nav-item active" id="btnMap" onclick="showPage('map')">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M20.5 3l-6 2-6-2-6 2v15l6 2 6-2 6 2 2.5-0.8V4.2L20.5 3zM14 17.5l-6 2-6-2V5.5l6 2 6-2v12z"/></svg>
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path d="M20.5 3l-6 2-6-2-6 2v15l6 2 6-2 6 2 2.5-0.8V4.2L20.5 3zM14 17.5l-6 2-6-2V5.5l6 2 6-2v12z" />
+            </svg>
             <span style="font-size:9px;">KART</span>
         </div>
         <div class="nav-item" id="btnShop" onclick="showPage('shop')">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z"/></svg>
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M7 18c-1.1 0-1.99.9-1.99 2S5.9 22 7 22s2-.9 2-2-.9-2-2-2zM1 2v2h2l3.6 7.59-1.35 2.45c-.16.28-.25.61-.25.96 0 1.1.9 2 2 2h12v-2H7.42c-.14 0-.25-.11-.25-.25l.03-.12.9-1.63h7.45c.75 0 1.41-.41 1.75-1.03l3.58-6.49c.08-.14.12-.31.12-.48 0-.55-.45-1-1-1H5.21l-.94-2H1zm16 16c-1.1 0-1.99.9-1.99 2s.89 2 1.99 2 2-.9 2-2-.9-2-2-2z" />
+            </svg>
             <span style="font-size:9px;">BUTIKK</span>
         </div>
         <div class="cam-btn-round" onclick="openCamera()">
-            <svg fill="white" width="32" height="32" viewBox="0 0 24 24"><path d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm6 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5z"/></svg>
+            <svg fill="white" width="32" height="32" viewBox="0 0 24 24">
+                <path
+                    d="M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm6 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5-5 5z" />
+            </svg>
         </div>
         <div class="nav-item" id="btnSocial" onclick="showPage('social')">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z" />
+            </svg>
             <span style="font-size:9px;">SOSIALT</span>
         </div>
         <div class="nav-item" id="btnProfile" onclick="showPage('profile')">
-            <svg class="nav-icon" viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+            <svg class="nav-icon" viewBox="0 0 24 24">
+                <path
+                    d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" />
+            </svg>
             <span style="font-size:9px;">PROFIL</span>
         </div>
     </div>
@@ -420,15 +1427,20 @@
         const defaultState = {
             xp: 0,
             coins: 0,
-            viewMode: '2d', // '2d' eller '3d'
-            avatar2D: "👤", // Emoji eller bilde-URL
+            viewMode: '2d',
+            avatar2D: "👤",
             model3D: "https://modelviewer.dev/shared-assets/models/RobotExpressive.glb",
             color3D: "#ff0000",
             inventory: [],
             equipped: null,
             photos: [],
             friends: ["Tod Erik (AI)"],
-            chats: {}
+            chats: {},
+            settings: {
+                showPos: true,
+                showMyPhotos: true,
+                showGlobal: false
+            }
         };
 
         const robots = [
@@ -439,14 +1451,15 @@
 
         const avatars = ["👤", "👩", "👨", "🧝", "🧚", "🧙", "🧛", "🧟", "🧜", "🦊", "🐻", "🐼"];
 
-        // UTSTYRS-LISTE
+        // UTSTYR
         const items = [
             { id: 1, name: "Kompass", cost: 50, icon: "🧭", desc: "Finn veien hjem." },
             { id: 2, name: "Lommelykt", cost: 100, icon: "🔦", desc: "Se bedre i mørket." },
             { id: 3, name: "Caps", cost: 150, icon: "🧢", desc: "Beskytt deg mot solen." },
             { id: 4, name: "Sekk", cost: 300, icon: "🎒", desc: "Bær mer utstyr." },
             { id: 5, name: "Kikkert", cost: 400, icon: "🔭", desc: "Se dyr på lang avstand." },
-            { id: 6, name: "Kano", cost: 1000, icon: "🛶", desc: "Utforsk vannet." }
+            { id: 6, name: "Kano", cost: 1000, icon: "🛶", desc: "Utforsk vannet." },
+            { id: 7, name: "Gullskilt", cost: 1000, icon: "📛", desc: "Gjør navnet ditt gyllent!" }
         ];
 
         // FALSKE BRUKERE
@@ -462,7 +1475,7 @@
         ];
 
         let state = { ...defaultState, username: "Gjest" };
-        let map, playerMarker, classifier;
+        let map, playerMarker, photoLayer, globalPhotoLayer, fakeUsersLayer, classifier;
         let currentLat = 0, currentLng = 0;
         let aiModelLoaded = false;
         let currentChatPartner = null;
@@ -474,6 +1487,9 @@
                 const allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
                 if (allUsers[lastUser]) {
                     state = { ...defaultState, ...allUsers[lastUser] };
+                    // Ensure settings object exists
+                    if (!state.settings) state.settings = defaultState.settings;
+
                     document.getElementById('loginScreen').style.display = 'none';
                     startAIAndGame();
                     return;
@@ -481,14 +1497,14 @@
             }
         };
 
-        // --- LOGIN / REGISTER (Forenklet for demo) ---
+        // --- LOGIN / REGISTER ---
         function loginUser() {
             const email = document.getElementById('emailInput').value.trim().toLowerCase();
             const pass = document.getElementById('passwordInput').value.trim();
-            if(!email) return;
-            
+            if (!email) return;
+
             let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
-            if(allUsers[email] && allUsers[email].password === pass) {
+            if (allUsers[email] && allUsers[email].password === pass) {
                 state = { ...defaultState, ...allUsers[email] };
                 finishLogin(email);
             } else {
@@ -499,10 +1515,10 @@
         function registerUser() {
             const email = document.getElementById('emailInput').value.trim().toLowerCase();
             const pass = document.getElementById('passwordInput').value.trim();
-            if(!email) return;
+            if (!email) return;
 
             let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
-            if(allUsers[email]) {
+            if (allUsers[email]) {
                 alert("Bruker finnes allerede.");
             } else {
                 state = { ...defaultState, username: email.split('@')[0], email: email, password: pass };
@@ -519,14 +1535,14 @@
         }
 
         function logout() {
-            if(confirm("Logge ut?")) {
+            if (confirm("Logge ut?")) {
                 localStorage.removeItem('ecoDexLastUser');
                 location.reload();
             }
         }
 
         function saveState() {
-            if(state.email) {
+            if (state.email) {
                 let allUsers = JSON.parse(localStorage.getItem('ecoDexUsers') || '{}');
                 allUsers[state.email] = state;
                 localStorage.setItem('ecoDexUsers', JSON.stringify(allUsers));
@@ -558,6 +1574,7 @@
             setupMap();
             setupUI();
             startGPS();
+            robotTalk(`Velkommen, ${state.username}!`);
         }
 
         // --- GPS & KART ---
@@ -579,21 +1596,35 @@
             if (map) return;
             map = L.map('map', { zoomControl: false }).setView([59.91, 10.75], 16);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19 }).addTo(map);
+            photoLayer = L.layerGroup().addTo(map);
+            globalPhotoLayer = L.layerGroup().addTo(map);
+            fakeUsersLayer = L.layerGroup().addTo(map);
             renderMapPhotos();
             generateFakeUsersMap();
+            renderGlobalPhotos();
         }
 
         // --- MARKØR VISNING PÅ KARTET ---
         function updatePlayerMarker() {
             if (!map) return;
-            const latlng = [currentLat, currentLng];
 
+            // Hvis bruker har skjult posisjon i instillinger
+            if (!state.settings.showPos) {
+                if (playerMarker) map.removeLayer(playerMarker);
+                playerMarker = null;
+                document.getElementById('debugStatus').innerText = "Usynlig modus 👻";
+                return;
+            } else {
+                document.getElementById('debugStatus').innerText = "Synlig ✅";
+            }
+
+            const latlng = [currentLat, currentLng];
             let htmlContent = '';
             let iconSize = [50, 50];
 
-            // HENT UTSTYR IKON
+            // HENT UTSTYR IKON (Bortsett fra Navneskilt som er ID 7)
             let equippedIcon = "";
-            if (state.equipped) {
+            if (state.equipped && state.equipped !== 7) {
                 const item = items.find(i => i.id === state.equipped);
                 if (item) equippedIcon = `<div class="equipped-icon-overlay" style="bottom:0; right:0;">${item.icon}</div>`;
             }
@@ -615,10 +1646,10 @@
                         </model-viewer>
                         ${equippedIcon}
                     </div>`;
-                
+
                 setTimeout(() => {
-                   const m = document.getElementById('mapModel');
-                   if(m) applyColorToModel(m, state.color3D);
+                    const m = document.getElementById('mapModel');
+                    if (m) applyColorToModel(m, state.color3D);
                 }, 500);
 
             } else {
@@ -636,11 +1667,13 @@
                 className: 'custom-div-icon',
                 html: htmlContent,
                 iconSize: iconSize,
-                iconAnchor: [iconSize[0]/2, iconSize[1]]
+                iconAnchor: [iconSize[0] / 2, iconSize[1]]
             });
 
             if (playerMarker) playerMarker.setLatLng(latlng).setIcon(icon);
             else playerMarker = L.marker(latlng, { icon: icon }).addTo(map);
+
+            if (!map.getBounds().contains(latlng)) map.panTo(latlng);
         }
 
         // --- BUTIKK & INVENTORY LOGIKK ---
@@ -710,6 +1743,13 @@
         function equipItem(id) {
             if (state.equipped === id) state.equipped = null;
             else state.equipped = id;
+
+            // Hvis det er navneskilt, gi beskjed
+            if (id === 7) {
+                if (state.equipped === 7) robotTalk("Navnet ditt skinner i gull!");
+                else robotTalk("Gullskilt tatt av.");
+            }
+
             saveState();
             renderInventory();
             updateUI();
@@ -811,20 +1851,22 @@
             renderMessages();
         }
         function closeChat() { document.getElementById('chatOverlay').style.display = 'none'; currentChatPartner = null; }
-        function handleChatSubmit(e) { e.preventDefault(); const t = document.getElementById('chatInput').value; if(t) { 
-            if(!state.chats[currentChatPartner]) state.chats[currentChatPartner] = [];
-            state.chats[currentChatPartner].push({sender:'me', text:t});
-            document.getElementById('chatInput').value = "";
-            renderMessages();
-            setTimeout(() => {
-                state.chats[currentChatPartner].push({sender:'them', text: "Hei! Kult å høre fra deg."});
+        function handleChatSubmit(e) {
+            e.preventDefault(); const t = document.getElementById('chatInput').value; if (t) {
+                if (!state.chats[currentChatPartner]) state.chats[currentChatPartner] = [];
+                state.chats[currentChatPartner].push({ sender: 'me', text: t });
+                document.getElementById('chatInput').value = "";
                 renderMessages();
-                saveState();
-            }, 1000);
-        }}
+                setTimeout(() => {
+                    state.chats[currentChatPartner].push({ sender: 'them', text: "Hei! Kult å høre fra deg." });
+                    renderMessages();
+                    saveState();
+                }, 1000);
+            }
+        }
         function renderMessages() {
             const c = document.getElementById('chatMessages'); c.innerHTML = "";
-            (state.chats[currentChatPartner]||[]).forEach(m => {
+            (state.chats[currentChatPartner] || []).forEach(m => {
                 c.innerHTML += `<div class="msg ${m.sender}">${m.text}</div>`;
             });
             c.scrollTop = c.scrollHeight;
@@ -834,22 +1876,22 @@
         function showPage(id) {
             document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            if(id !== 'map') document.getElementById(id + 'Page').classList.add('active');
-            
-            if(id === 'map') {
+            if (id !== 'map') document.getElementById(id + 'Page').classList.add('active');
+
+            if (id === 'map') {
                 document.getElementById('btnMap').classList.add('active');
                 setTimeout(() => map.invalidateSize(), 100);
                 updatePlayerMarker();
             }
-            if(id === 'social') {
+            if (id === 'social') {
                 document.getElementById('btnSocial').classList.add('active');
                 switchSocialTab('friends');
             }
-            if(id === 'shop') {
+            if (id === 'shop') {
                 document.getElementById('btnShop').classList.add('active');
                 renderShop();
             }
-            if(id === 'profile') {
+            if (id === 'profile') {
                 document.getElementById('btnProfile').classList.add('active');
                 updateUI();
                 renderInventory();
@@ -868,7 +1910,7 @@
         function setAvatarMode(mode) {
             state.viewMode = mode;
             saveState();
-            
+
             document.getElementById('btnMode2D').classList.toggle('active', mode === '2d');
             document.getElementById('btnMode3D').classList.toggle('active', mode === '3d');
             document.getElementById('panel2D').style.display = mode === '2d' ? 'block' : 'none';
@@ -922,10 +1964,10 @@
 
         function applyColorToModel(modelElement, colorHex) {
             if (!modelElement || !modelElement.model) return;
-            const r = parseInt(colorHex.substr(1,2), 16) / 255;
-            const g = parseInt(colorHex.substr(3,2), 16) / 255;
-            const b = parseInt(colorHex.substr(5,2), 16) / 255;
-            const colorArray = [r, g, b, 1.0]; 
+            const r = parseInt(colorHex.substr(1, 2), 16) / 255;
+            const g = parseInt(colorHex.substr(3, 2), 16) / 255;
+            const b = parseInt(colorHex.substr(5, 2), 16) / 255;
+            const colorArray = [r, g, b, 1.0];
             const material = modelElement.model.materials[0];
             if (material) material.pbrMetallicRoughness.setBaseColorFactor(colorArray);
         }
@@ -935,15 +1977,20 @@
             document.getElementById('profileXPDisplay').innerText = state.xp;
             document.getElementById('profileCoinsDisplay').innerText = state.coins;
             document.getElementById('scoreVal').innerText = state.coins;
-            
+
             const container = document.getElementById('profileContainer');
-            
-            // HENT UTSTYR IKON
+
+            // HENT UTSTYR IKON (Bortsett fra Navneskilt som er ID 7)
             let equippedIcon = "";
-            if (state.equipped) {
+            if (state.equipped && state.equipped !== 7) {
                 const item = items.find(i => i.id === state.equipped);
                 if (item) equippedIcon = `<div class="equipped-icon-overlay" style="bottom:10px; right:10px;">${item.icon}</div>`;
             }
+
+            // GULL NAVN HVIS UTSTYRT
+            const nameEl = document.getElementById('profileNameDisplay');
+            if (state.equipped === 7) nameEl.classList.add('gold-name');
+            else nameEl.classList.remove('gold-name');
 
             if (state.viewMode === '3d') {
                 container.innerHTML = `
@@ -952,13 +1999,13 @@
                         ${equippedIcon}
                         <div class="edit-avatar-btn" onclick="toggleAvatarMenu()">✎</div>
                     </div>`;
-                
+
                 const mv = document.getElementById('profileModelViewer');
                 mv.addEventListener('load', () => applyColorToModel(mv, state.color3D));
             } else {
                 let content = state.avatar2D.startsWith('data:image') ? `<img src="${state.avatar2D}" class="custom-avatar-img">` : state.avatar2D;
                 let bgStyle = state.avatar2D.startsWith('data:image') ? "background:none; border:none;" : "";
-                
+
                 container.innerHTML = `
                     <div class="profile-avatar-2d" style="${bgStyle}">${content}</div>
                     ${equippedIcon}
@@ -970,6 +2017,8 @@
         function renderMapPhotos() {
             if (!photoLayer || !map) return;
             photoLayer.clearLayers();
+            if (!state.settings.showMyPhotos) return;
+
             if (state.photos && state.photos.length > 0) {
                 state.photos.forEach(p => {
                     if (p.lat && p.lng) {
@@ -981,30 +2030,70 @@
                 });
             }
         }
+
+        function renderGlobalPhotos() {
+            if (!globalPhotoLayer || !map) return;
+            globalPhotoLayer.clearLayers();
+            if (!state.settings.showGlobal) return;
+
+            // Generer noen tilfeldige bilder rundt brukeren
+            for (let i = 0; i < 5; i++) {
+                const lat = (currentLat || 59.91) + (Math.random() - 0.5) * 0.01;
+                const lng = (currentLng || 10.75) + (Math.random() - 0.5) * 0.01;
+                const icon = L.divIcon({ className: 'global-photo-icon', html: '🌍', iconSize: [25, 25] });
+                L.marker([lat, lng], { icon: icon }).addTo(globalPhotoLayer).bindPopup("Et bilde tatt av noen andre!");
+            }
+        }
+
         function generateFakeUsersMap() {
             if (!fakeUsersLayer) return;
             fakeUsersLayer.clearLayers();
-            fakeUsers.slice(0,3).forEach((u,i) => {
-                const lat = (currentLat||59.91) + (Math.random()-0.5)*0.002;
-                const lng = (currentLng||10.75) + (Math.random()-0.5)*0.002;
-                const icon = L.divIcon({ className:'custom-div-icon', html:`<div class="other-player-icon">${u.avatar}</div>`, iconSize:[40,40]});
-                L.marker([lat,lng], {icon:icon}).addTo(fakeUsersLayer).bindPopup(u.name);
+            fakeUsers.slice(0, 3).forEach((u, i) => {
+                const lat = (currentLat || 59.91) + (Math.random() - 0.5) * 0.002;
+                const lng = (currentLng || 10.75) + (Math.random() - 0.5) * 0.002;
+                const icon = L.divIcon({ className: 'custom-div-icon', html: `<div class="other-player-icon">${u.avatar}</div>`, iconSize: [40, 40] });
+                L.marker([lat, lng], { icon: icon }).addTo(fakeUsersLayer).bindPopup(u.name);
             });
         }
         function renderGallery() {
             const div = document.getElementById('gallery');
             div.innerHTML = "";
-            (state.photos||[]).reverse().forEach(p => {
+            (state.photos || []).reverse().forEach(p => {
                 div.innerHTML += `<div class="item-card" style="padding:0; overflow:hidden;"><img src="${p.src}" style="width:100%; height:100px; object-fit:cover;"><div style="font-size:10px; padding:5px;">${p.label}</div></div>`;
             });
         }
-        function robotTalk(msg) { const b = document.getElementById('robotMsg'); b.innerText = msg; b.style.display='block'; setTimeout(()=>b.style.display='none',5000); }
-        function openSettings(){document.getElementById('settingsOverlay').style.display='flex'; document.getElementById('settingUsername').value=state.username; document.getElementById('settingEmail').value=state.email;}
-        function closeSettings(){document.getElementById('settingsOverlay').style.display='none';}
-        function saveSettings(){ state.username = document.getElementById('settingUsername').value; state.email = document.getElementById('settingEmail').value; saveState(); updateUI(); closeSettings();}
+        function showRobotTip() {
+            const randomTip = robotTips[Math.floor(Math.random() * robotTips.length)];
+            robotTalk(randomTip);
+        }
+        function robotTalk(msg) { const b = document.getElementById('robotMsg'); b.innerText = msg; b.style.display = 'block'; setTimeout(() => b.style.display = 'none', 5000); }
+        function openSettings() {
+            document.getElementById('settingsOverlay').style.display = 'flex';
+            document.getElementById('settingUsername').value = state.username;
+            document.getElementById('settingEmail').value = state.email;
+            document.getElementById('setPos').checked = state.settings.showPos;
+            document.getElementById('setMyPhotos').checked = state.settings.showMyPhotos;
+            document.getElementById('setGlobalPhotos').checked = state.settings.showGlobal;
+        }
+        function closeSettings() { document.getElementById('settingsOverlay').style.display = 'none'; }
+        function saveSettings() {
+            state.username = document.getElementById('settingUsername').value;
+            state.email = document.getElementById('settingEmail').value;
+            state.settings.showPos = document.getElementById('setPos').checked;
+            state.settings.showMyPhotos = document.getElementById('setMyPhotos').checked;
+            state.settings.showGlobal = document.getElementById('setGlobalPhotos').checked;
 
-        // --- KAMERA LOGIKK ---
-        function openCamera() { document.getElementById('cameraPage').classList.add('active'); navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(s => document.getElementById('videoFeed').srcObject = s); document.getElementById('saveBtn').style.display='none'; document.getElementById('snapBtn').style.display='block'; document.getElementById('capturedPhoto').style.display='none'; }
+            saveState();
+            updateUI();
+            updatePlayerMarker();
+            renderMapPhotos();
+            renderGlobalPhotos();
+            closeSettings();
+            robotTalk("Innstillinger lagret!");
+        }
+
+        // --- KAMERA LOGIKK MED BEDRE AI ---
+        function openCamera() { document.getElementById('cameraPage').classList.add('active'); navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(s => document.getElementById('videoFeed').srcObject = s); document.getElementById('saveBtn').style.display = 'none'; document.getElementById('snapBtn').style.display = 'block'; document.getElementById('capturedPhoto').style.display = 'none'; }
         function closeCamera() { document.getElementById('cameraPage').classList.remove('active'); }
         function takePhoto() {
             const v = document.getElementById('videoFeed'); const c = document.getElementById('photoCanvas');
@@ -1015,24 +2104,69 @@
             document.getElementById('snapBtn').style.display = 'none';
             document.getElementById('aiResultText').innerText = "Analyserer...";
             document.getElementById('aiResultText').style.display = 'block';
-            
-            setTimeout(() => {
-                const pts = 100;
-                document.getElementById('aiResultText').innerText = "Funn registrert!";
-                const btn = document.getElementById('saveBtn');
-                btn.style.display = 'block';
-                btn.innerText = `LAGRE (+${pts} XP)`;
-                btn.onclick = () => {
-                    state.xp += pts;
-                    state.coins += (pts / 5);
-                    state.photos.push({src:document.getElementById('capturedPhoto').src, label:"Funn", lat:currentLat, lng:currentLng, points:pts});
-                    saveState();
-                    closeCamera();
-                    showPage('map');
-                    robotTalk(`Du fikk ${pts} XP og ${pts/5} mynter!`);
+
+            if (aiModelLoaded) {
+                classifier.classify(document.getElementById('capturedPhoto'), (err, results) => {
+                    if (err) {
+                        showResult("Ukjent", 10, 2);
+                    } else {
+                        processAIResults(results);
+                    }
+                });
+            } else {
+                setTimeout(() => showResult("AI ikke klar", 10, 2), 1000);
+            }
+        }
+
+        function processAIResults(results) {
+            const natureWords = ["bird", "flower", "tree", "plant", "dog", "cat", "animal", "insect", "fish", "grass", "leaf", "mushroom", "sea", "mountain", "forest", "water", "sky", "cloud"];
+            const rareWords = ["eagle", "bear", "wolf", "orchid", "fox", "deer", "whale"];
+
+            let bestMatch = results[0].label;
+            let xp = 10;
+            let coins = 2;
+            let foundNature = false;
+
+            // Sjekk topp 3 resultater
+            for (let i = 0; i < 3; i++) {
+                const label = results[i].label.toLowerCase();
+
+                if (rareWords.some(w => label.includes(w))) {
+                    bestMatch = results[i].label + " (SJELDEN!)";
+                    xp = 500;
+                    coins = 100;
+                    foundNature = true;
+                    break;
+                } else if (natureWords.some(w => label.includes(w))) {
+                    bestMatch = results[i].label + " (Natur)";
+                    xp = 150;
+                    coins = 30;
+                    foundNature = true;
+                    break;
                 }
-            }, 1500);
+            }
+
+            if (!foundNature) bestMatch = "Kanskje " + bestMatch + "?";
+
+            showResult(bestMatch, xp, coins);
+        }
+
+        function showResult(label, xp, coins) {
+            document.getElementById('aiResultText').innerText = label;
+            const btn = document.getElementById('saveBtn');
+            btn.style.display = 'block';
+            btn.innerText = `LAGRE (+${xp} XP)`;
+            btn.onclick = () => {
+                state.xp += xp;
+                state.coins += coins;
+                state.photos.push({ src: document.getElementById('capturedPhoto').src, label: label, lat: currentLat, lng: currentLng, points: xp });
+                saveState();
+                closeCamera();
+                showPage('map');
+                robotTalk(`Du fikk ${xp} XP og ${coins} mynter!`);
+            };
         }
     </script>
 </body>
+
 </html>
